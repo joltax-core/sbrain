@@ -1,0 +1,99 @@
+---
+name: bootstrap
+description: "Initialize a new project with the sbrain structure via a guided interview. Use when the user says \"bootstrap\", \"init project\", \"kurulum\", \"projeyi başlat\", when session-start finds no .agent/ directory, or when starting a brand-new backend/frontend/mobile project that should use the kernel. Interviews the human, then scaffolds .agent/, docs/, ARCHITECTURE.md, CLAUDE.md, and the first task — filled in, not [FILL IN]."
+---
+
+# Bootstrap — Project Initialization Interview
+
+Turn an empty (or existing) repository into a sbrain project. The output of this
+skill is a scaffold whose ARCHITECTURE.md is **filled from the interview**, not a
+template full of `[FILL IN]`.
+
+Never bootstrap silently. This is a conversation: ask, confirm, then write.
+
+---
+
+## Step 0 — Preconditions
+
+- If `.agent/` already exists: stop. This project is initialized; offer `session-start`.
+- Detect existing code: if `package.json`, `Package.swift`, `build.gradle(.kts)`, or
+  `pubspec.yaml` exists, infer the stack and confirm it instead of asking cold.
+- Templates live at `${CLAUDE_PLUGIN_ROOT}/templates/`.
+
+## Step 1 — Core interview (all stacks)
+
+Ask in one compact block; accept partial answers and follow up only on gaps:
+
+1. **Project**: one sentence — what does it do, who consumes it?
+2. **Stack**: nestjs / frontend (vue/react) / swift / kotlin / other?
+   (If inferred in Step 0, just confirm.)
+3. **Team size**: solo or team? (affects how strongly SESSION.md is trusted)
+4. **Remote & branching**: is there an origin? Confirm main/develop model is wanted.
+5. **Definition of quality**: is there (or will there be) a test suite from day one?
+
+## Step 2 — Stack interview
+
+Ask ONLY the block matching the chosen stack. These answers drive the Optional-concerns
+table and ARCHITECTURE.md.
+
+**nestjs** (full profile available — `stack-nestjs` skill):
+- Primary DB (e.g. PostgreSQL 16)? Cache (Redis / none)? Queue (BullMQ / none)?
+- Auth: none / JWT dual-token (kernel integration standard) / other?
+- Authorization model: role-enum / permission-keys / none?
+- Multi-tenancy? Soft delete? i18n? File storage? Observability (correlationId)?
+- First business modules (names + one-line responsibility each)?
+- Will a frontend consume this API? (yes -> copy the integration contract, Step 4)
+
+**frontend / swift / kotlin** (profiles pending — be explicit about this):
+Tell the human: "The [stack] profile is not written yet; I will scaffold the kernel
+(sessions, tasks, memory, git rules) which is stack-agnostic, and we will grow the
+stack rules in .agent/memory/STACK.md until a profile skill is promoted from them."
+Then ask the minimum viable set:
+- frontend: framework + state management? API client generated from backend Swagger?
+  design system? SSR?
+- swift: min iOS version? architecture (MVVM / TCA)? DI approach? offline strategy?
+  distribution flow (TestFlight)?
+- kotlin: min SDK? Compose? DI (Hilt/Koin)? offline strategy? Play distribution flow?
+Record every answer in ARCHITECTURE.md even without a profile skill.
+
+## Step 3 — Confirm the plan
+
+Present a short summary: stack, enabled concerns table, first modules, first task.
+Get an explicit "yes" before writing anything.
+
+## Step 4 — Scaffold
+
+1. Copy `${CLAUDE_PLUGIN_ROOT}/templates/project/` into the repo root (`.agent/`,
+   `docs/`). Do not overwrite existing files without asking.
+2. Write `docs/ARCHITECTURE.md` from the template **with every section filled from the
+   interview** — project overview, stack table, Optional concerns (explicit yes/no per
+   row), module classification, database strategy, auth flow, approved dependency list.
+3. Write the project `CLAUDE.md` from `templates/project/CLAUDE.md.template`:
+   - set the `Stack profile:` line (e.g. `stack-nestjs` or `none (growing)`),
+   - keep it SHORT — it loads every session; details belong in skills and docs.
+4. If backend with a frontend consumer (or a frontend consuming a kernel backend):
+   copy `${CLAUDE_PLUGIN_ROOT}/templates/contracts/INTEGRATION_STANDARD.md` to
+   `docs/INTEGRATION_STANDARD.md`.
+5. For each first module named in the interview: create
+   `docs/modules/[module]/CONTRACT.md` from the template, filled as far as the
+   interview allows; mark open questions explicitly.
+6. Create `TASK-001` (usually: project skeleton / core setup) via the add-task flow,
+   with acceptance criteria from the interview. Run
+   `bash "${CLAUDE_PLUGIN_ROOT}/scripts/reindex.sh"`.
+7. Git: if no repo, `git init`, create `main`, then `develop` from it. Initial commit
+   on develop: `chore: initialize project with sbrain`. Remind the human to enable
+   branch protection on the host (see git-workflow skill).
+
+## Step 5 — Hand off
+
+Report what was created, then: "Bootstrap complete. Say 'start' to run session-start,
+or 'start TASK-001' to begin." Do not start implementing on your own.
+
+---
+
+## Quality bar
+- No `[FILL IN]` left in ARCHITECTURE.md — every gap is either answered or listed
+  under "Deferred decisions" with a trigger to revisit.
+- The concerns table is honest: nothing enabled that is not implemented, nothing
+  implemented that is not enabled.
+- The human approved the plan before any file was written.

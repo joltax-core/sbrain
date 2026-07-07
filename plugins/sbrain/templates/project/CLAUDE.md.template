@@ -1,0 +1,22 @@
+# [PROJECT NAME]
+
+[One sentence: what this project does and who consumes it.]
+
+This project uses **sbrain** (installed as a Claude Code plugin).
+
+Stack profile: [stack-nestjs | none (growing — rules accumulate in .agent/memory/STACK.md)]
+
+## Non-negotiables (details live in the kernel skills and docs/)
+
+- Git is the source of truth; `.agent/` state files are caches reconciled at session start.
+- Run `sbrain:session-start` before any work; `sbrain:session-end` to close.
+- One task per branch off `develop`; never commit to `main`/`develop` (hook-enforced).
+- Contract first: no code for a module before `docs/modules/[module]/CONTRACT.md` exists.
+- No new dependency without human approval; deviations from rules require an ADR.
+- Every non-WIP commit passes the fresh-context `code-reviewer` agent first.
+
+## Where things live
+
+- Rules: `docs/RULES.md` · Architecture + enabled concerns: `docs/ARCHITECTURE.md`
+- Task ledger: `.agent/tasks/INDEX.md` (generated — never edit by hand)
+- Traps: `docs/KNOWN_ISSUES/INDEX.md` · Decisions: `.agent/memory/DECISIONS.md`, `docs/ADR/`

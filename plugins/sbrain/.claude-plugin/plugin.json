@@ -1,0 +1,16 @@
+{
+  "name": "sbrain",
+  "version": "0.1.0",
+  "description": "Git-authoritative development kernel: session protocols, task ledger, memory, enforcement hooks, fresh-context code review, and stack profiles. Git is the source of truth; every state file is a cache reconciled against it.",
+  "author": {
+    "name": "Joltax"
+  },
+  "keywords": [
+    "workflow",
+    "session",
+    "git",
+    "tasks",
+    "code-review",
+    "nestjs"
+  ]
+}

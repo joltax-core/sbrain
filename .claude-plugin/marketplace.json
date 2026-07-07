@@ -1,0 +1,31 @@
+{
+  "name": "joltax",
+  "owner": {
+    "name": "Joltax",
+    "email": "support@joltax.com"
+  },
+  "metadata": {
+    "description": "Git-authoritative development tooling for Claude Code: the sbrain workflow plugin and (soon) its stack profiles.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "sbrain",
+      "source": "./plugins/sbrain",
+      "description": "Git-authoritative development kernel: session boot/close protocols, task ledger with generated index, layered memory, deterministic enforcement hooks (pnpm-only, protected branches), fresh-context code reviewer, worktree-based parallel task dispatch, bootstrap interview, and a NestJS stack profile.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joltax"
+      },
+      "category": "workflow",
+      "keywords": [
+        "workflow",
+        "git",
+        "sessions",
+        "tasks",
+        "code-review",
+        "nestjs"
+      ]
+    }
+  ]
+}
