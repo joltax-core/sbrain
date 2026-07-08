@@ -59,6 +59,44 @@ plugins/sbrain/               <- the plugin (see its README)
   promote them into the relevant skill here, bump the version, push. Every project
   inherits the sharpened rules on its next `marketplace update`.
 
+## Three prompts to try (core functionality)
+
+1. In an empty repo: **`bootstrap`** — sbrain interviews you (stack, DB, auth,
+   concerns, first modules) and scaffolds `.agent/`, a *filled* ARCHITECTURE.md,
+   module contracts, and TASK-001.
+2. In a bootstrapped project: **`start`** — the session-start skill fetches,
+   checks main/develop drift, detects Clean Start vs Resume from git, reconciles
+   state files, and delivers a Session Start Summary before any code is touched.
+3. During work: **"npm install lodash"** — watch the guard: sbrain blocks it
+   deterministically with the pnpm rule (hooks enforce what prose can't).
+
+## Troubleshooting
+
+- **Skills don't autocomplete under `/sbrain:`** — check `/plugin` shows sbrain
+  enabled; if freshly pushed, run `/plugin marketplace update joltax` then
+  `/reload-plugins`.
+- **A skill loads but never triggers** — its YAML frontmatter may be broken;
+  run `claude plugin validate plugins/sbrain` (an unquoted `: ` inside a
+  description silently drops all metadata).
+- **Guards fire in the wrong project** — they activate only when a `.agent/`
+  directory exists in the cwd or a parent; remove it or work elsewhere.
+- **A git command is blocked with `sbrain guard:`** — that is intentional
+  enforcement; read the message, it names the rule and the correct alternative.
+- **INDEX.md looks wrong** — never hand-edit it; run
+  `bash plugins/sbrain/scripts/reindex.sh` inside the project.
+
+## Support
+
+- Bugs & features: [GitHub Issues](https://github.com/joltax-core/sbrain/issues)
+  (templates provided — including **Stack Learning** for promoting confirmed
+  patterns from your project's `.agent/memory/STACK.md` into sbrain)
+- Contact: support@joltax.com
+- Contributing: see [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## License
+
+[MIT](LICENSE) © 2026 Joltax
+
 ## Notes
 
 - The repo must be public (or reachable via your git credentials) for
