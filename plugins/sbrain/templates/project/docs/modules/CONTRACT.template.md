@@ -13,6 +13,18 @@ the role matrix explicitly here.]
 | -------------------- | ------------------- |
 | `/api/v1/[module]/*` | [roles or "public"] |
 
+## Owned permission keys (§A — Authorization/RBAC)
+
+[Required if §A is `Enabled? = yes` in ARCHITECTURE.md; otherwise write
+"N/A — authorization disabled per ARCHITECTURE.md". Every key here must also exist in
+`permissions.enum.ts`, and vice versa for keys owned by this module — the two must
+match exactly, not just overlap.]
+
+| Permission key    | Grants                          |
+| ------------------ | -------------------------------- |
+| `[module]:read`    | [what viewing this data allows]  |
+| `[module]:write`   | [what creating/editing allows]   |
+
 ## Owned tables
 
 | Table   | Access   |

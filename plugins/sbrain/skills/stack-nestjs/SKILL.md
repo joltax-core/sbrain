@@ -1,6 +1,6 @@
 ---
 name: stack-nestjs
-description: "NestJS stack profile for sbrain projects. Load before writing any NestJS/TypeScript backend code in a project whose CLAUDE.md declares \"Stack profile: stack-nestjs\". Contains layer rules (controller/service/repository), Prisma discipline, Swagger bar, concern rules (multi-tenancy, soft delete, worker, i18n, storage, observability), naming conventions, pnpm rules, and the per-module implementation order."
+description: "NestJS stack profile for sbrain projects. Load before writing any NestJS/TypeScript backend code in a project whose CLAUDE.md declares \"Backend stack profile: stack-nestjs\" (or the legacy \"Stack profile: stack-nestjs\"). Contains layer rules (controller/service/repository), Prisma discipline, Swagger bar, concern rules (multi-tenancy, soft delete, worker, i18n, storage/MinIO, observability, LDAP auth, breakglass, RBAC/permissions), naming conventions, pnpm rules, and the per-module implementation order."
 ---
 
 # Stack Profile — NestJS
@@ -106,10 +106,45 @@ uses `process.cwd()`, never `__dirname` (points to dist/ at runtime).
 
 **§F File storage:** all writes via `StorageService` in `core/storage`; key format
 `{folder}/{uuid}.{ext}` (prefix `{tenantId}/` if §M); size/type limits at proxy AND app.
+Reference implementation is MinIO — env contract `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`,
+`MINIO_SECRET_KEY`, `MINIO_BUCKET`, `MINIO_USE_SSL`; downloads go through a presigned
+URL with a fixed, short TTL (define the value in `ARCHITECTURE.md`, not scattered
+across call sites) — the app never proxies file bytes itself.
 
 **§O Observability:** `correlationId` assigned in middleware, propagated to logs, job
 payloads, outgoing calls; structured JSON logging; `console.log` forbidden in
 production code.
+
+**§A Authorization / RBAC:** authorization is enforced only in a guard
+(`@RequirePermission('module:action')` or equivalent), never inline in a service or
+controller method body; permission strings live in a single `permissions.enum.ts`,
+always `module:action` pairs (`users:read`, `storage:delete`, ...) — one file, not one
+per module, so `docs/modules/[module]/CONTRACT.md`'s "Owned permission keys" section can
+be diffed against it. The breakglass account (§B) holds every permission unconditionally
+and is never subject to the role/group mapping below. If §L is enabled, permission
+resolution derives from the LDAP group→role mapping documented in `ARCHITECTURE.md`'s
+Data strategy section; if §L is not enabled, roles/permissions are owned by a
+user-role table in this service's own database. Disabling §A entirely (ARCHITECTURE.md
+`Enabled? = no`) is a valid, explicit choice — it means every endpoint is reachable by
+any authenticated (or anonymous, per §5) caller, and the code-reviewer will not flag
+missing permission checks.
+
+**§L LDAP auth:** connection config is env-only —
+`LDAP_URL`, `LDAP_BIND_DN`, `LDAP_BIND_PASSWORD`, `LDAP_BASE_DN`, `LDAP_USER_FILTER`,
+`LDAP_GROUP_ATTR` — never hardcoded, never logged. Group membership read at login is
+mapped to §A permissions via the table in `ARCHITECTURE.md`, not via inline `if`
+branches. If the LDAP server is unreachable, LDAP users **cannot** log in — there is no
+silent fallback to a cached or default role; the only account that can still log in is
+the breakglass account (§B). A health check (e.g. a lightweight bind attempt) surfaces
+LDAP reachability so the frontend (`stack-frontend-vue` §L) can show the outage state.
+
+**§B Breakglass:** exactly one local admin account, independent of LDAP, seeded at
+first boot from an env-provided credential (or generated once and surfaced a single
+time — never stored in plaintext logs thereafter). It never appears in the `users`
+module's list/search endpoints. Every breakglass login is logged distinctly from
+normal logins (structured, if §O is enabled) so its use is auditable. Credential
+rotation policy is a project decision — record it as an ADR; the only fixed rule is
+that using it is never silent.
 
 ## 9. Pre-commit commands
 
@@ -126,6 +161,14 @@ pnpm test   # if a suite exists — never fake a green run
   `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `docs/DEPLOYMENT.md`.
 - Prisma migration committed alongside schema changes; production uses
   `prisma migrate deploy` (never `migrate dev`).
+- If §L, §F, or §B are enabled, every env var their rules require exists in
+  `.env.example` with a safe placeholder — and no var appears in `.env.example` for a
+  concern that is `Enabled? = no` in `ARCHITECTURE.md`. Same check for the
+  corresponding service block in `docker-compose.yml` (minio, an LDAP dev server under
+  `docker-compose.dev.yml` if used).
+- If §A is enabled, every new/changed endpoint declares its `@RequirePermission(...)`
+  guard and the permission key exists in `permissions.enum.ts` and in its module's
+  CONTRACT "Owned permission keys" list — all three or none.
 
 ## Version notes (dated — verify before relying on them)
 

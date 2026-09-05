@@ -229,8 +229,35 @@ Response `200 OK`:
 
 - `userId` — unique identifier for the user.
 - `username` — display name or login identifier.
-- `permissions` — array of permission strings. Used by the frontend permission system.
-- `isBreakGlass` — boolean. Set to `false` if the concept does not apply.
+- `permissions` — array of permission strings, `module:action` format. This is the ONE
+  place the frontend learns what it may do — the frontend never re-derives permissions
+  from a role name or an LDAP group locally. If the backend's `stack-nestjs` §A
+  (Authorization/RBAC) is enabled, every string here must exist in that backend's
+  `permissions.enum.ts` and in the owning module's CONTRACT ("Owned permission keys");
+  if §A is disabled, return every permission the frontend might gate on, or an empty
+  array with a project-level note that all authenticated actions are allowed.
+- `isBreakGlass` — boolean. Set to `false` if the concept does not apply. If
+  `stack-nestjs` §B (Breakglass) is enabled and this login used the breakglass
+  account, this MUST be `true` — the frontend uses it to render a persistent "you are
+  signed in as breakglass" indicator (`stack-frontend-vue` §5), not just for logging.
+
+### 2.3.1 LDAP & Breakglass (if `stack-nestjs` §L is enabled)
+
+The login/`me` contract above does not change shape when LDAP is enabled — `POST
+/api/v1/auth/login` still takes `{ username, password }` and returns the same
+envelope. What changes is only how the backend validates them:
+
+1. Try the LDAP bind first. On success, resolve `permissions` from the LDAP group →
+   role/permission mapping (`stack-nestjs` §A/§L); `isBreakGlass: false`.
+2. If LDAP is unreachable (not just "this user failed to bind" — the directory itself
+   is down), only the breakglass credential may succeed; every other login attempt
+   gets `401 INVALID_CREDENTIALS`, never a silent fallback to a cached permission set.
+3. A successful breakglass login returns `isBreakGlass: true` and the full permission
+   set (breakglass is never partially privileged).
+
+The frontend never talks to LDAP directly and never needs to know it exists beyond
+reading `isBreakGlass` and handling a "directory unreachable" state surfaced through
+normal error codes (Section 5) — LDAP is entirely a backend implementation detail.
 
 Error `401 Unauthorized`:
 
@@ -429,7 +456,7 @@ new composables that depend on the new endpoints are written:
 
 ```bash
 # Run from the frontend project root
-npm run generate:api
+pnpm run generate:api
 ```
 
 The generation script points to `VITE_API_BASE_URL/swagger-json` (or equivalent OpenAPI JSON URL).
@@ -510,5 +537,7 @@ Before connecting a new backend to the frontend, verify every item below:
 [ ] File/download endpoints set Content-Type + Content-Disposition and are documented as raw (non-envelope) in Swagger
 [ ] All endpoints versioned under /api/v1/
 [ ] VITE_API_BASE_URL set correctly in frontend .env
-[ ] npm run generate:api run after backend schema is stable
+[ ] pnpm run generate:api run after backend schema is stable
+[ ] If §A enabled: every `permissions` string returned by /me exists in permissions.enum.ts and in a module's "Owned permission keys"
+[ ] If §L enabled: LDAP-unreachable state returns 401, never a silent fallback; breakglass login sets isBreakGlass: true
 ```

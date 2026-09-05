@@ -4,7 +4,8 @@
 
 This project uses **sbrain** (installed as a Claude Code plugin).
 
-Stack profile: [stack-nestjs | none (growing — rules accumulate in .agent/memory/STACK.md)]
+Backend stack profile: [stack-nestjs | none (growing — rules accumulate in .agent/memory/STACK.md)]
+Frontend stack profile: [stack-frontend-vue | none (growing — rules accumulate in .agent/memory/STACK.md)]
 
 ## Non-negotiables (details live in the kernel skills and docs/)
 

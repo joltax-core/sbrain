@@ -8,8 +8,9 @@ description: "Execute one task in a sbrain project, from reading the spec to han
 Execute one task. Read -> plan -> branch -> implement -> review -> hand off. In order.
 
 This skill is stack-agnostic. The **implementation order and layer rules come from the
-stack skill** named in the project's `CLAUDE.md` (`Stack profile:` line). Load that
-skill before Step 4 if it is not already loaded.
+stack skill(s)** named in the project's `CLAUDE.md` (`Backend stack profile:` /
+`Frontend stack profile:` lines). Load the skill matching the task's module (backend,
+frontend, or both) before Step 4 if it is not already loaded.
 
 ---
 

@@ -13,8 +13,10 @@ This skill reconciles those caches against git and never trusts them blindly.
 **Precondition:** the project must contain a `.agent/` directory. If it does not,
 this project has not been initialized — offer to run the `bootstrap` skill instead.
 
-**Stack profile:** read the `Stack profile:` line in the project's `CLAUDE.md`. Load the
-matching stack skill (e.g. `stack-nestjs`) before writing any code this session.
+**Stack profile:** read the `Backend stack profile:` and `Frontend stack profile:`
+lines in the project's `CLAUDE.md`. Load the matching stack skill(s) (e.g.
+`stack-nestjs`, `stack-frontend-vue`) before writing any code this session — a project
+may have one, both, or neither set.
 
 ---
 
