@@ -54,7 +54,11 @@ table and ARCHITECTURE.md.
 Vue 3 only; a non-admin or non-Vue frontend falls through to the "profile pending"
 paragraph below):
 - Confirm it consumes a `stack-nestjs` backend over `docs/INTEGRATION_STANDARD.md`.
-- State management (Pinia / composables-only)? Component/design library, if any?
+- State management (Pinia / composables-only)?
+- Design system: **Tailwind CSS + shadcn-vue — the default and only supported choice
+  for this profile** (it is what Section 4c scaffolds and what `stack-frontend-vue`
+  §1.1's component decision rule assumes). If the human wants something else, that is
+  a real deviation — confirm explicitly and record it as an ADR; do not run Step 4c.
 - Mirror the backend's enabled concerns — they must match, not be re-decided here:
   §L (LDAP status screen), §F (MinIO upload components), §A (permission-gated UI).
 - SSR needed, or SPA is enough for an internal admin tool?
@@ -83,7 +87,12 @@ Get an explicit "yes" before writing anything.
    `docs/`). Do not overwrite existing files without asking.
 2. Write `docs/ARCHITECTURE.md` from the template **with every section filled from the
    interview** — project overview, stack table, Optional concerns (explicit yes/no per
-   row), module classification, database strategy, auth flow, approved dependency list.
+   row), module classification, database strategy, auth flow, approved dependency list
+   (if `stack-frontend-vue` with shadcn-vue: pre-approve `tailwindcss`, `radix-vue`,
+   `class-variance-authority`, `tailwind-merge`, and the icon package shadcn-vue's
+   `init` installs — choosing this design system in Step 2 already approved them; the
+   list documents that so code-reviewer doesn't re-litigate each one as a new,
+   unapproved dependency the first time a component pulls it in).
 3. Write the project `CLAUDE.md` from `templates/project/CLAUDE.md.template`:
    - set the `Backend stack profile:` line (e.g. `stack-nestjs` or `none (growing)`)
      and the `Frontend stack profile:` line (e.g. `stack-frontend-vue` or `none`) —
@@ -103,6 +112,19 @@ Get an explicit "yes" before writing anything.
     name given in Step 1. Write the results as `.env.example` and `docker-compose.yml`
     at the repo root. This is config, not business code — writing it here does not
     violate "bootstrap never writes implementation."
+4c. If the frontend stack is `stack-frontend-vue` (and shadcn-vue was not explicitly
+    declined in Step 2): set up the design system that `stack-frontend-vue` §1.1
+    assumes, once, in the frontend project root:
+    ```bash
+    pnpm dlx shadcn-vue@latest init
+    pnpm dlx shadcn-vue@latest mcp init --client claude
+    ```
+    The first sets up Tailwind + `components.json` + `src/components/ui/`; the second
+    registers the shadcn-vue MCP server for this client so every future session in
+    this project can query/add components through it — this is what makes tier-1
+    components (Section 1.1 of `stack-frontend-vue`) the default, not a manual step
+    the human has to remember per project. Confirm with the human before running
+    either command if a frontend project skeleton does not already exist to init into.
 5. For each first module named in the interview: create
    `docs/modules/[module]/CONTRACT.md` from the template, filled as far as the
    interview allows; mark open questions explicitly.

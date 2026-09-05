@@ -12,7 +12,7 @@
     {
       "name": "sbrain",
       "source": "./plugins/sbrain",
-      "description": "Git-authoritative development kernel: session boot/close protocols, task ledger with generated index, layered memory, deterministic enforcement hooks (pnpm-only, protected branches), fresh-context code reviewer, worktree-based parallel task dispatch, bootstrap interview, a NestJS backend stack profile (LDAP/breakglass auth, MinIO storage, RBAC), and a Vue 3 admin-dashboard frontend stack profile.",
+      "description": "Git-authoritative development kernel: session boot/close protocols, task ledger with generated index, layered memory, deterministic enforcement hooks (pnpm-only, protected branches), fresh-context code reviewer, worktree-based parallel task dispatch, bootstrap interview, a NestJS backend stack profile (LDAP/breakglass auth, MinIO storage, RBAC), and a Vue 3 admin-dashboard frontend stack profile (Tailwind + shadcn-vue via MCP, wired in by bootstrap).",
       "version": "0.2.0",
       "author": {
         "name": "Joltax"
@@ -27,7 +27,9 @@
         "nestjs",
         "vue",
         "rbac",
-        "ldap"
+        "ldap",
+        "shadcn-vue",
+        "mcp"
       ]
     }
   ]

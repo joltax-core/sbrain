@@ -24,7 +24,9 @@ frontend, or both) before Step 4 if it is not already loaded.
 - `docs/ARCHITECTURE.md` — which Optional concerns are enabled; they decide which rules
   apply to this code.
 - If this task touches Vue frontend code: `docs/COMPONENTS.md`, in full, before writing
-  any component (`stack-frontend-vue` §1.1 decides reuse vs. new vs. module-local).
+  any component, AND check the shadcn-vue MCP for a matching UI primitive before
+  hand-rolling one (`stack-frontend-vue` §1.1 decides tier-1 vs. tier-2 vs.
+  module-local).
 If anything is ambiguous, ask before proceeding.
 
 ## Step 2 — Announce the plan

@@ -29,10 +29,16 @@ behavior changes.
   `/auth/me` tie to §A/§B/§L; fixed a stray `npm run generate:api` example to
   `pnpm` (the standard was already pnpm-only elsewhere)
 - New templates: `.env.example.template`, `docker-compose.template.yml`,
-  `docs/COMPONENTS.md` (shared Vue component catalog, seeded empty by bootstrap for
-  `stack-frontend-vue` projects; stack-frontend-vue §1.1 makes reading it — and
-  choosing reuse vs. new-shared vs. module-local — a hard rule before writing any
-  component; code-reviewer and task-execution both check/read it)
+  `docs/COMPONENTS.md` (tier-2 composite Vue component catalog, seeded empty by
+  bootstrap for `stack-frontend-vue` projects)
+- stack-frontend-vue: two-tier component decision rule (§1.1) — tier-1 UI primitives
+  (button, dialog, table, sheet, ...) come from shadcn-vue via its MCP server, never
+  hand-rolled; tier-2 composite/business components (AppTable, AppFilterDrawer,
+  FormBuilder) are catalogued in `docs/COMPONENTS.md` and built on top of tier-1.
+  bootstrap now runs `shadcn-vue@latest init` + `shadcn-vue@latest mcp init --client
+  claude` by default for this profile (Step 4c) so the MCP is available from session
+  one, not a manually-remembered per-project step; code-reviewer flags a hand-rolled
+  tier-1 primitive or an undocumented/duplicate tier-2 component as a FAIL.
 
 ## [0.1.0] — 2026-07-07
 

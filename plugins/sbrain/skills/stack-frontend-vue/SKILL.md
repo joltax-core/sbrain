@@ -1,6 +1,6 @@
 ---
 name: stack-frontend-vue
-description: "Vue 3 admin-dashboard stack profile for sbrain projects. Load before writing any Vue/TypeScript frontend code in a project whose CLAUDE.md declares \"Frontend stack profile: stack-frontend-vue\". Contains layer rules (view/composable/component), the docs/COMPONENTS.md reuse-vs-new-component decision rule, the generated-API-client discipline, the Query/Table/Actions/Filters list-page pattern, auth/breakglass screen rules, concern rules (LDAP status, storage/MinIO uploads, RBAC/permission gating), naming conventions, pnpm rules, and the per-page implementation order."
+description: "Vue 3 admin-dashboard stack profile for sbrain projects. Load before writing any Vue/TypeScript frontend code in a project whose CLAUDE.md declares \"Frontend stack profile: stack-frontend-vue\". Contains layer rules (view/composable/component), the two-tier component decision rule (shadcn-vue MCP for UI primitives, docs/COMPONENTS.md catalog for composite/business components), the generated-API-client discipline, the Query/Table/Actions/Filters list-page pattern, auth/breakglass screen rules, concern rules (LDAP status, storage/MinIO uploads, RBAC/permission gating), naming conventions, pnpm rules, and the per-page implementation order."
 ---
 
 # Stack Profile — Vue 3 Admin Dashboard
@@ -9,7 +9,8 @@ Everything Vue-specific lives here. The kernel skills (sessions, tasks, git) are
 stack-agnostic and reference this profile through the project's `CLAUDE.md`. This
 profile assumes an admin-style dashboard consuming a sbrain `stack-nestjs` backend
 over the contract in `docs/INTEGRATION_STANDARD.md` — it is not a general-purpose
-Vue profile.
+Vue profile. It also assumes Tailwind CSS + shadcn-vue as the design system
+(bootstrap sets both up); this is not a "your choice of component library" profile.
 
 ---
 
@@ -27,10 +28,31 @@ Vue profile.
 
 ### 1.1 Which component to use — the decision rule
 
-`docs/COMPONENTS.md` is the catalog of shared/core components (`AppTable`,
-`AppPagination`, `AppFilterDrawer`, `FormBuilder`, ...). It starts near-empty at
-bootstrap — these are not a pre-built external library, they are built by whichever
-module needs them first. Before writing ANY component for a module:
+Two tiers. Never skip tier 1 to hand-roll something tier 1 already provides.
+
+**Tier 1 — UI primitives (button, input, dialog, dropdown, table, sheet, tabs, form
+field, toast, badge, ...): shadcn-vue, via its MCP server.** Every `stack-frontend-vue`
+project has the shadcn-vue MCP registered by the `bootstrap` skill when this profile
+is chosen (`pnpm dlx shadcn-vue@latest mcp init --client claude`) — its tools may be
+deferred in the current session; if they don't appear yet, `ToolSearch` for
+`shadcn-vue`/`registry` before assuming they're unavailable. Before writing a
+primitive from raw HTML/CSS, query that MCP for a matching component and add it.
+Added components land in `src/components/ui/` as owned source (shadcn-vue's model
+copies code into the repo — it is not an npm dependency you import a black box from,
+you may edit it after adding). A hand-rolled `<div>`-and-CSS reimplementation of
+something shadcn-vue already provides is a defect, not a style choice — check the MCP
+first, every time, even for something that looks trivial. If the MCP is genuinely not
+registered in this project (an older project, or bootstrap step skipped), say so and
+offer to run the init command rather than silently falling back to hand-rolled markup.
+
+**Tier 2 — composite/business components built ON TOP of tier-1 primitives**
+(`AppTable` wrapping shadcn-vue's Table with the pagination/sort wiring from Section 3,
+`AppFilterDrawer` wrapping its Sheet with URL-synced filter state, `FormBuilder`
+wrapping its Form components with the project's validation conventions): catalogued in
+`docs/COMPONENTS.md`, under `src/components/core/` (kept separate from `ui/` so the
+shadcn-vue CLI/MCP never has to reconcile with hand-maintained composites). This
+catalog starts near-empty at bootstrap — these are built by whichever module needs
+them first, not pre-built. Before writing ANY tier-2 component for a module:
 
 1. **Read `docs/COMPONENTS.md` in full.** Not a grep for a name you're guessing at —
    read the responsibilities, because the component you need may be catalogued under
@@ -43,15 +65,16 @@ module needs them first. Before writing ANY component for a module:
    it to the human, don't silently duplicate.
 3. **If nothing fits, ask: would a second, unrelated module plausibly want this exact
    shape?**
-   - Yes -> it's a shared component. Build it under `src/components/core/` (or the
-     project's established shared path), add its entry to `docs/COMPONENTS.md` in the
-     SAME change that introduces it — a shared component without a catalog entry does
-     not exist as far as the next module is concerned.
+   - Yes -> it's a tier-2 shared component. Build it under `src/components/core/`,
+     composing tier-1 primitives, add its entry to `docs/COMPONENTS.md` in the SAME
+     change that introduces it — a shared component without a catalog entry does not
+     exist as far as the next module is concerned.
    - No -> it's module-specific. Keep it local to that module's own `components/`
-     folder; do NOT add it to `docs/COMPONENTS.md`.
-4. Record which path was taken in the TASK file (reused `AppTable`; added shared
-   `AppKanbanBoard`; or added module-local `UsersAvatarStack`) — the same discipline
-   as recording a new dependency.
+     folder, still composing tier-1 primitives where they fit; do NOT add it to
+     `docs/COMPONENTS.md`.
+4. Record which path was taken in the TASK file (added tier-1 `Dialog` via shadcn-vue
+   MCP; reused tier-2 `AppTable`; added tier-2 `AppKanbanBoard`; or added module-local
+   `UsersAvatarStack`) — the same discipline as recording a new dependency.
 
 ## 2. Implementation order (per page/module)
 
@@ -131,7 +154,9 @@ invented on the frontend; they come from the same list the backend's
 
 Files/folders kebab-case; components PascalCase (`AppTable.vue`); composables
 camelCase prefixed `use` (`useUsersQuery.ts`); constants UPPER_SNAKE_CASE. All source
-in English.
+in English. Exception: `src/components/ui/` (tier-1, shadcn-vue) keeps whatever
+layout/naming the shadcn-vue CLI/MCP generates — do not rename or restructure files
+there to match this convention; that breaks re-running the CLI to update a component.
 
 ## 8. Package manager — pnpm only (hook-enforced)
 
@@ -139,6 +164,8 @@ in English.
   them. Use `pnpm add <pkg>` / `pnpm <script>`.
 - Only `pnpm-lock.yaml` is committed; a `package-lock.json`/`yarn.lock` in a diff is a
   critical violation.
+- shadcn-vue components are added via `pnpm dlx shadcn-vue@latest add <component>`
+  (or the MCP tool, Section 1.1) — never `npx`/`yarn dlx`.
 
 ## 9. Pre-commit commands
 
@@ -154,9 +181,10 @@ pnpm test   # if a suite exists — never fake a green run
   change — a stale client (missing field, wrong type) is not "done".
 - Every list/detail view has a rendered loading state and a rendered error state —
   "the happy path works" is NOT done.
-- `docs/COMPONENTS.md` read before writing any component (Section 1.1); any new
-  shared component is documented there in this same change; no module-local component
-  duplicates something already catalogued.
+- Section 1.1 followed: the shadcn-vue MCP was checked before any new tier-1 primitive
+  was hand-rolled; `docs/COMPONENTS.md` was read before writing any tier-2 component;
+  any new tier-2 shared component is documented there in this same change; no
+  module-local component duplicates something already at tier 1 or tier 2.
 - If §A is enabled: every new action/route this change adds has a permission check,
   and that permission key exists in the backend's `permissions.enum.ts` (Section 3 of
   `docs/INTEGRATION_STANDARD.md`) — a frontend-only permission key is a bug.

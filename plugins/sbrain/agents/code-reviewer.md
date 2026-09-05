@@ -34,10 +34,13 @@ You review with fresh eyes what another agent (or human) produced.
    `grep -rn "@prisma/client\|PrismaService" src/ --include="*.service.ts" --include="*.controller.ts"`;
    for a Vue frontend: no direct API-client calls from a `.vue` view — verify with
    `grep -rln "apiClient\.\|axios\." src/**/*.vue`; no business logic in controllers;
-   for a Vue frontend, any new component added under a shared/core path has a matching
+   for a Vue frontend, any new component under `src/components/core/` has a matching
    row in `docs/COMPONENTS.md` added in this same diff, and no new component
-   duplicates an existing catalogued one in responsibility (`stack-frontend-vue` §1.1)
-   — a near-identical second table/form/filter component is a FAIL, not a WARN.
+   duplicates an existing tier-2 catalogued one in responsibility (`stack-frontend-vue`
+   §1.1) — a near-identical second table/form/filter component is a FAIL, not a WARN.
+   Also flag a hand-rolled tier-1 primitive (a custom dialog/dropdown/toast built from
+   raw markup instead of via shadcn-vue) as a FAIL — check `src/components/ui/` for
+   whether shadcn-vue is already set up before assuming one had to be hand-rolled.
 3. Rules: universal rules + enabled concern blocks from the stack profile(s). Run the
    mechanical greps (console.log in production code, magic strings for
    permissions/roles instead of the `permissions.enum.ts` keys, `.env` or secrets in
