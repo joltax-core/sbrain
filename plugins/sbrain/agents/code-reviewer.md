@@ -25,14 +25,19 @@ You review with fresh eyes what another agent (or human) produced.
 1. Read, in order: the diff under review, the TASK-NNN.md acceptance criteria, the
    module's CONTRACT.md (including "Owned permission keys" if §A is enabled),
    docs/ARCHITECTURE.md (concerns table), the relevant docs/KNOWN_ISSUES/[module].md,
-   and the stack profile(s) named in CLAUDE.md (backend and/or frontend — review only
-   the one(s) the diff actually touches).
+   docs/COMPONENTS.md (if the diff touches Vue frontend code), and the stack
+   profile(s) named in CLAUDE.md (backend and/or frontend — review only the one(s)
+   the diff actually touches).
 2. Architecture: module boundaries respected; no cross-module repository/table access;
    cross-module calls only via public service interfaces; layer rules of the stack
    profile obeyed (e.g. for NestJS: Prisma only in `*.repository.ts` — verify with
    `grep -rn "@prisma/client\|PrismaService" src/ --include="*.service.ts" --include="*.controller.ts"`;
    for a Vue frontend: no direct API-client calls from a `.vue` view — verify with
-   `grep -rln "apiClient\.\|axios\." src/**/*.vue`; no business logic in controllers).
+   `grep -rln "apiClient\.\|axios\." src/**/*.vue`; no business logic in controllers;
+   for a Vue frontend, any new component added under a shared/core path has a matching
+   row in `docs/COMPONENTS.md` added in this same diff, and no new component
+   duplicates an existing catalogued one in responsibility (`stack-frontend-vue` §1.1)
+   — a near-identical second table/form/filter component is a FAIL, not a WARN.
 3. Rules: universal rules + enabled concern blocks from the stack profile(s). Run the
    mechanical greps (console.log in production code, magic strings for
    permissions/roles instead of the `permissions.enum.ts` keys, `.env` or secrets in

@@ -92,6 +92,10 @@ Get an explicit "yes" before writing anything.
 4. If backend with a frontend consumer (or a frontend consuming a kernel backend):
    copy `${CLAUDE_PLUGIN_ROOT}/templates/contracts/INTEGRATION_STANDARD.md` to
    `docs/INTEGRATION_STANDARD.md`.
+4a. If the frontend stack is `stack-frontend-vue`: copy
+    `${CLAUDE_PLUGIN_ROOT}/templates/contracts/COMPONENTS.md` to
+    `docs/COMPONENTS.md` — it starts empty; do not pre-invent component rows that
+    don't exist in the repo yet (see `stack-frontend-vue` §1.1).
 4b. If the stack is `stack-nestjs`: fill `${CLAUDE_PLUGIN_ROOT}/templates/project/
     .env.example.template` and `docker-compose.template.yml` from the Step 2 answers —
     include a block (LDAP_*, MINIO_*, BREAKGLASS_*, the corresponding compose service)

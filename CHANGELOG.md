@@ -28,7 +28,11 @@ behavior changes.
 - INTEGRATION_STANDARD.md: documented how `permissions` / `isBreakGlass` on
   `/auth/me` tie to §A/§B/§L; fixed a stray `npm run generate:api` example to
   `pnpm` (the standard was already pnpm-only elsewhere)
-- New templates: `.env.example.template`, `docker-compose.template.yml`
+- New templates: `.env.example.template`, `docker-compose.template.yml`,
+  `docs/COMPONENTS.md` (shared Vue component catalog, seeded empty by bootstrap for
+  `stack-frontend-vue` projects; stack-frontend-vue §1.1 makes reading it — and
+  choosing reuse vs. new-shared vs. module-local — a hard rule before writing any
+  component; code-reviewer and task-execution both check/read it)
 
 ## [0.1.0] — 2026-07-07
 

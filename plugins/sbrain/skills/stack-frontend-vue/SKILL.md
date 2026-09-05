@@ -1,6 +1,6 @@
 ---
 name: stack-frontend-vue
-description: "Vue 3 admin-dashboard stack profile for sbrain projects. Load before writing any Vue/TypeScript frontend code in a project whose CLAUDE.md declares \"Frontend stack profile: stack-frontend-vue\". Contains layer rules (view/composable/component), the generated-API-client discipline, the Query/Table/Actions/Filters list-page pattern, auth/breakglass screen rules, concern rules (LDAP status, storage/MinIO uploads, RBAC/permission gating), naming conventions, pnpm rules, and the per-page implementation order."
+description: "Vue 3 admin-dashboard stack profile for sbrain projects. Load before writing any Vue/TypeScript frontend code in a project whose CLAUDE.md declares \"Frontend stack profile: stack-frontend-vue\". Contains layer rules (view/composable/component), the docs/COMPONENTS.md reuse-vs-new-component decision rule, the generated-API-client discipline, the Query/Table/Actions/Filters list-page pattern, auth/breakglass screen rules, concern rules (LDAP status, storage/MinIO uploads, RBAC/permission gating), naming conventions, pnpm rules, and the per-page implementation order."
 ---
 
 # Stack Profile — Vue 3 Admin Dashboard
@@ -24,6 +24,34 @@ Vue profile.
   a composable never constructs a URL by hand.
 - A module's frontend code never imports another module's composables' internals —
   only what that module's `docs/modules/[module]/CONTRACT.md` exposes as public.
+
+### 1.1 Which component to use — the decision rule
+
+`docs/COMPONENTS.md` is the catalog of shared/core components (`AppTable`,
+`AppPagination`, `AppFilterDrawer`, `FormBuilder`, ...). It starts near-empty at
+bootstrap — these are not a pre-built external library, they are built by whichever
+module needs them first. Before writing ANY component for a module:
+
+1. **Read `docs/COMPONENTS.md` in full.** Not a grep for a name you're guessing at —
+   read the responsibilities, because the component you need may be catalogued under
+   a name you wouldn't have searched for.
+2. **If an existing entry covers the need (even at ~80%): use it, extend it via
+   props/slots.** Never fork a shared component into a module-local near-copy because
+   the last 20% is inconvenient — that is how a project ends up with `AppTable` and
+   `AppTable2`. If the existing component's API genuinely cannot accommodate the need,
+   that is a real product decision (change a shared component's contract) — surface
+   it to the human, don't silently duplicate.
+3. **If nothing fits, ask: would a second, unrelated module plausibly want this exact
+   shape?**
+   - Yes -> it's a shared component. Build it under `src/components/core/` (or the
+     project's established shared path), add its entry to `docs/COMPONENTS.md` in the
+     SAME change that introduces it — a shared component without a catalog entry does
+     not exist as far as the next module is concerned.
+   - No -> it's module-specific. Keep it local to that module's own `components/`
+     folder; do NOT add it to `docs/COMPONENTS.md`.
+4. Record which path was taken in the TASK file (reused `AppTable`; added shared
+   `AppKanbanBoard`; or added module-local `UsersAvatarStack`) — the same discipline
+   as recording a new dependency.
 
 ## 2. Implementation order (per page/module)
 
@@ -50,19 +78,23 @@ Vue profile.
 
 ## 4. List-page pattern — Query / Table / Actions / Filters
 
-The standard shape for every list page, so every module looks the same to a reader:
+The standard shape for every list page, so every module looks the same to a reader.
+This is a shape, not a name list — the concrete components (`AppTable`,
+`AppFilterDrawer`, ...) come from `docs/COMPONENTS.md` via the Section 1.1 decision
+rule; the first module in a project to build a list page is the one that creates them.
 
 - **Query**: fetch state (`data`, `loading`, `error`) for the current page/filter/sort.
-- **Table**: column definitions + row-level render logic; renders through the shared
-  `AppTable` + `AppPagination` components — a module never rolls its own table markup.
+- **Table**: column definitions + row-level render logic; renders through the
+  catalogued table/pagination components — a module never rolls its own table markup
+  once one exists in `docs/COMPONENTS.md`.
 - **Actions**: create/update/delete/bulk-action handlers, including confirm dialogs;
   never inlined in the view or in Table.
-- **Filters**: filter form state, synced to the URL via `AppFilterDrawer` (or
-  equivalent) so a filtered view is shareable/bookmarkable and survives a reload.
+- **Filters**: filter form state, synced to the URL via the catalogued filter-drawer
+  component so a filtered view is shareable/bookmarkable and survives a reload.
 
 Detail/edit views follow the same split: a Query composable for the record, an
-Actions composable for save/delete, and a form built with the project's shared
-`FormBuilder` (or equivalent) rather than hand-rolled `<form>` markup per module.
+Actions composable for save/delete, and a form built with the catalogued form-builder
+component rather than hand-rolled `<form>` markup per module.
 
 ## 5. Auth & breakglass screens
 
@@ -122,6 +154,9 @@ pnpm test   # if a suite exists — never fake a green run
   change — a stale client (missing field, wrong type) is not "done".
 - Every list/detail view has a rendered loading state and a rendered error state —
   "the happy path works" is NOT done.
+- `docs/COMPONENTS.md` read before writing any component (Section 1.1); any new
+  shared component is documented there in this same change; no module-local component
+  duplicates something already catalogued.
 - If §A is enabled: every new action/route this change adds has a permission check,
   and that permission key exists in the backend's `permissions.enum.ts` (Section 3 of
   `docs/INTEGRATION_STANDARD.md`) — a frontend-only permission key is a bug.

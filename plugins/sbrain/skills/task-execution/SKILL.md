@@ -23,6 +23,8 @@ frontend, or both) before Step 4 if it is not already loaded.
 - `.agent/memory/STACK.md` for relevant patterns.
 - `docs/ARCHITECTURE.md` — which Optional concerns are enabled; they decide which rules
   apply to this code.
+- If this task touches Vue frontend code: `docs/COMPONENTS.md`, in full, before writing
+  any component (`stack-frontend-vue` §1.1 decides reuse vs. new vs. module-local).
 If anything is ambiguous, ask before proceeding.
 
 ## Step 2 — Announce the plan
