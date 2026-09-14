@@ -434,19 +434,25 @@ The frontend `extractErrorMessage()` utility reads this field for display logic.
 
 ---
 
-## 6. Swagger / OpenAPI
+## 6. OpenAPI Schema & Documentation UI
 
-The frontend API client is auto-generated from the backend's Swagger/OpenAPI schema using
-`swagger-typescript-api`. This means the Swagger output directly determines what the frontend
-can call and what types it works with.
+The frontend API client is auto-generated from the backend's OpenAPI schema (produced by
+`@nestjs/swagger` decorators) using `swagger-typescript-api`. This means the schema output
+directly determines what the frontend can call and what types it works with — this
+generation mechanic does not change based on which UI renders the schema for humans.
+
+The human-facing documentation UI is **Scalar**, not the framework-default Swagger UI — see
+`stack-nestjs` §4 for the full presentation, access-gate, and login-token-reuse rules. This
+section (6.1–6.3) only covers the schema/generation contract, which those rules build on
+top of.
 
 ### 6.1 Requirements
 
-- Every endpoint must be documented with Swagger decorators (or equivalent).
-- Every request body and response DTO must have a corresponding schema in the Swagger output.
+- Every endpoint must be documented with OpenAPI decorators (or equivalent).
+- Every request body and response DTO must have a corresponding schema in the OpenAPI output.
 - Paginated responses must use a generic wrapper DTO so the generated client reflects the
   correct type (e.g. `PaginatedResponseDto<MeetingDto>` not `any`).
-- Bearer auth must be declared in the Swagger config so the generated client includes
+- Bearer auth must be declared in the OpenAPI config so the generated client includes
   the security worker.
 
 ### 6.2 Client generation
@@ -508,7 +514,7 @@ GET  http://localhost:3000/api/v1/meetings
 - Endpoints that return a file (download or export) set `Content-Type` and
   `Content-Disposition` and return the raw bytes. These are the only exception to the
   Section 1 response envelope.
-- Such endpoints must declare their response `content` explicitly in Swagger (an explicit
+- Such endpoints must declare their response `content` explicitly in the OpenAPI schema (an explicit
   content map, not `@ApiProduces` alone) so the generated client treats the response as a
   blob, not JSON.
 - Flag every such endpoint in the module's `CONTRACT.md` so consumers know the response is
@@ -529,12 +535,13 @@ Before connecting a new backend to the frontend, verify every item below:
 [ ] POST /api/v1/auth/refresh — rotates refreshTokenId, returns new accessToken
 [ ] CORS — allowedHeaders includes Content-Type, Authorization, x-retry
 [ ] CORS — allowedMethods includes OPTIONS
-[ ] Swagger schema exposed at a predictable URL
+[ ] OpenAPI schema exposed at a predictable URL
+[ ] Scalar reference mounted at /docs, behind Basic Auth (SCALAR_DOCS_USERNAME/PASSWORD) — stack-nestjs §4
 [ ] All DTOs named and documented — no anonymous inline schemas
 [ ] Paginated DTOs are generic — PaginatedResponseDto<T> not any
 [ ] Error responses use standard error codes from Section 5
 [ ] Dates returned as UTC ISO 8601 strings
-[ ] File/download endpoints set Content-Type + Content-Disposition and are documented as raw (non-envelope) in Swagger
+[ ] File/download endpoints set Content-Type + Content-Disposition and are documented as raw (non-envelope) in the OpenAPI schema
 [ ] All endpoints versioned under /api/v1/
 [ ] VITE_API_BASE_URL set correctly in frontend .env
 [ ] pnpm run generate:api run after backend schema is stable

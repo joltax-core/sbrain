@@ -1,6 +1,6 @@
 ---
 name: stack-nestjs
-description: "NestJS stack profile for sbrain projects. Load before writing any NestJS/TypeScript backend code in a project whose CLAUDE.md declares \"Backend stack profile: stack-nestjs\" (or the legacy \"Stack profile: stack-nestjs\"). Contains layer rules (controller/service/repository), Prisma discipline, Swagger bar, concern rules (multi-tenancy, soft delete, worker, i18n, storage/MinIO, observability, LDAP auth, breakglass, RBAC/permissions), naming conventions, pnpm rules, and the per-module implementation order."
+description: "NestJS stack profile for sbrain projects. Load before writing any NestJS/TypeScript backend code in a project whose CLAUDE.md declares \"Backend stack profile: stack-nestjs\" (or the legacy \"Stack profile: stack-nestjs\"). Contains layer rules (controller/service/repository), Prisma discipline, the OpenAPI/Scalar documentation bar, concern rules (multi-tenancy, soft delete, worker, i18n, storage/MinIO, observability, LDAP auth, breakglass, RBAC/permissions), naming conventions, pnpm rules, and the per-module implementation order."
 ---
 
 # Stack Profile — NestJS
@@ -16,7 +16,7 @@ stack-agnostic and reference this profile through the project's `CLAUDE.md`.
 - service: business logic, **no Prisma imports**.
 - repository (`*.repository.ts`): the ONLY place PrismaClient is used; returns DTOs or
   typed shapes, never raw Prisma entities.
-- dto: request validation + Swagger schema. guard: auth only. interceptor:
+- dto: request validation + OpenAPI schema. guard: auth only. interceptor:
   cross-cutting. middleware: request-level.
 - A module never imports another module's repository, entity, or Prisma model, and
   never queries tables owned by another module. Cross-module access goes only through
@@ -30,7 +30,7 @@ stack-agnostic and reference this profile through the project's `CLAUDE.md`.
 1. Prisma schema + migration (if any)
 2. repository
 3. service
-4. controller + Swagger decorators
+4. controller + OpenAPI decorators
 5. module wiring
 6. DTOs
 7. tests (where a suite exists; otherwise record manual verification in the TASK file)
@@ -49,18 +49,61 @@ stack-agnostic and reference this profile through the project's `CLAUDE.md`.
   (`unit: { id, name }`), not the raw id alone.
 - Route order: fixed-segment routes (`@Get('export')`) before `:param` routes.
 
-## 4. Swagger bar — "endpoint done"
+## 4. API documentation bar — "endpoint done"
 
-An endpoint is done only when the generated client (swagger-typescript-api) is fully
-typed and self-explanatory:
+The schema itself is still produced by `@nestjs/swagger` decorators — that generation
+path is unchanged and is what both `swagger-typescript-api` (frontend client gen) and
+the docs UI consume. What changed is the docs UI: it is served by **Scalar**
+(`@scalar/nestjs-api-reference`), not the framework-default Swagger UI.
+
+### 4.1 Decorator bar (produces the schema — unchanged mechanics)
+
+An endpoint is done only when the generated client is fully typed and self-explanatory,
+and Scalar renders it with nothing left to guess:
 - `@ApiOperation` with summary AND a description that explains the workflow.
 - Every possible status code declared (`400/401/403/404/500` where they can occur);
   errors use named DTOs (`ErrorResponseDto`), never anonymous inline schemas.
 - Every DTO property: realistic `example`, `description`, correct constraints.
   Nullable strings declare `type: String` (else the client generates `object | null`).
+- Every declared status code — success AND each error — carries a filled-in, realistic
+  example, not just the happy path. A consumer reading Scalar must see what a 403 or a
+  validation 400 actually looks like without opening the source.
 - Paginated responses use `PaginatedResponseDto<T>`.
 - Binary/stream endpoints declare `content` explicitly (not `@ApiProduces` alone).
 - "It shows in the UI" is NOT done. This bar is part of the Definition of Done.
+
+### 4.2 Scalar presentation — corporate, not default
+
+- Mounted at `/docs`; page title and favicon are set from `SCALAR_TITLE` (mirrors the
+  project name in `CLAUDE.md`'s H1) — never left as Scalar's own default title/branding.
+- Theme/layout set explicitly to a neutral, corporate look — no unstyled default.
+- Never ships internal-only debug panels or stack traces through the reference UI.
+
+### 4.3 Access gate — Basic Auth in front of `/docs`
+
+This gates who can open the documentation page; it is separate from, and in addition
+to, the API's own JWT auth on the endpoints themselves.
+- Enforced by a guard/middleware in front of the `/docs` route, never left open.
+- Username: `SCALAR_DOCS_USERNAME`, derived from the project slug
+  (`COMPOSE_PROJECT_NAME`) — a role handle, not a personal name.
+- Password: `SCALAR_DOCS_PASSWORD`, a 16-character hex secret. Same lifecycle as the
+  breakglass credential (§B): generated once at first boot if not provided via env,
+  surfaced a single time, never written to logs thereafter.
+- Required env validated at startup per §5 — the app refuses to start with a missing or
+  empty `SCALAR_DOCS_PASSWORD` outside local dev.
+
+### 4.4 Auth flow inside the reference — no copy-paste tokens
+
+- The login endpoint's security scheme must let a developer call
+  `POST /api/v1/auth/login` from Scalar's built-in request runner and reuse the
+  returned token on every subsequent request on the same page — no manual copying the
+  token into a header field, the way a Postman collection's login request sets the
+  environment's token variable via a test script.
+- The exact mechanism (auto-capture vs. a one-click "use this response value as the
+  bearer token" action) depends on the Scalar version pinned in `package.json` — verify
+  it against that version's current docs when first wiring this up, and record the
+  confirmed behavior in `.agent/memory/STACK.md` (same discipline as the Prisma version
+  note below — this surface moves fast).
 
 ## 5. Security & bootstrap (always)
 
@@ -71,6 +114,8 @@ typed and self-explanatory:
   in a constants file.
 - `main.ts` binds to `0.0.0.0` (container localhost breaks health checks).
 - Enums: UPPER_SNAKE_CASE values, in `*.enum.ts` files.
+- `/docs` (Scalar) sits behind its own Basic Auth gate per §4.3, in every environment,
+  not just production.
 
 ## 6. Package manager — pnpm only (hook-enforced)
 
@@ -156,7 +201,10 @@ pnpm test   # if a suite exists — never fake a green run
 
 ## 10. DoD additions (on top of the kernel Definition of Done)
 
-- Swagger bar (Section 4) met for every new/changed endpoint.
+- API documentation bar (Section 4) met for every new/changed endpoint — decorators
+  (§4.1) AND, on any project's first endpoint, the Scalar presentation/gate (§4.2–4.4).
+- `SCALAR_TITLE`, `SCALAR_DOCS_USERNAME`, `SCALAR_DOCS_PASSWORD` present in
+  `.env.example` with safe placeholders — always, this gate is not an optional concern.
 - Deployment artifacts updated if runtime config / dependency / env changed:
   `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `docs/DEPLOYMENT.md`.
 - Prisma migration committed alongside schema changes; production uses

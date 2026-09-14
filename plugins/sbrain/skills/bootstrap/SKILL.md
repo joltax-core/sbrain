@@ -69,8 +69,8 @@ Tell the human: "The [stack] profile is not written yet; I will scaffold the ker
 (sessions, tasks, memory, git rules) which is stack-agnostic, and we will grow the
 stack rules in .agent/memory/STACK.md until a profile skill is promoted from them."
 Then ask the minimum viable set:
-- frontend: framework + state management? API client generated from backend Swagger?
-  design system? SSR?
+- frontend: framework + state management? API client generated from backend OpenAPI
+  schema (Scalar-served)? design system? SSR?
 - swift: min iOS version? architecture (MVVM / TCA)? DI approach? offline strategy?
   distribution flow (TestFlight)?
 - kotlin: min SDK? Compose? DI (Hilt/Koin)? offline strategy? Play distribution flow?

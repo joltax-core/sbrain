@@ -49,7 +49,8 @@ You review with fresh eyes what another agent (or human) produced.
    key exists in both `permissions.enum.ts` and the module's CONTRACT.
 4. Known issues: does the diff touch an area with a KI? Is the documented rule followed?
 5. API surface (if a stack profile defines one): response envelope, versioning,
-   pagination DTOs, the Swagger "endpoint done" bar for every new/changed endpoint.
+   pagination DTOs, the OpenAPI/Scalar "endpoint done" bar (stack-nestjs §4) for every
+   new/changed endpoint.
 6. Logic & cleanliness: every acceptance criterion met; edge cases (null, empty,
    unauthorized, not found); no commented-out blocks, no TODO without a task, no
    unused imports.

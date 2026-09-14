@@ -78,7 +78,7 @@ them first, not pre-built. Before writing ANY tier-2 component for a module:
 
 ## 2. Implementation order (per page/module)
 
-1. Regenerate the API client from the backend's current Swagger (Section 3).
+1. Regenerate the API client from the backend's current OpenAPI schema (Section 3).
 2. `composables/use[Module]Query.ts` — list/detail fetching, loading/error state.
 3. `composables/use[Module]Actions.ts` — create/update/delete mutations.
 4. `composables/use[Module]Filters.ts` — filter state, synced to the URL query string.
@@ -90,8 +90,9 @@ them first, not pre-built. Before writing ANY tier-2 component for a module:
 ## 3. API client & data fetching (always)
 
 - The client is generated (swagger-typescript-api or the project's chosen generator)
-  from the backend's live Swagger JSON — never hand-written, never hand-edited after
-  generation. Regenerate whenever the backend's Swagger bar (stack-nestjs §4) changes.
+  from the backend's live OpenAPI JSON — never hand-written, never hand-edited after
+  generation. Regenerate whenever the backend's API documentation bar (stack-nestjs §4)
+  changes.
 - Response envelope matches `docs/INTEGRATION_STANDARD.md`: success `{ success: true,
   data }`, list adds `meta.pagination`, error `{ success: false, error: { code,
   message, details } }` — composables unwrap this once, in one shared helper, not per
@@ -177,7 +178,7 @@ pnpm test   # if a suite exists — never fake a green run
 
 ## 10. DoD additions (on top of the kernel Definition of Done)
 
-- The API client was regenerated against the backend's current Swagger for this
+- The API client was regenerated against the backend's current OpenAPI schema for this
   change — a stale client (missing field, wrong type) is not "done".
 - Every list/detail view has a rendered loading state and a rendered error state —
   "the happy path works" is NOT done.
