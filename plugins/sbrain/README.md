@@ -15,6 +15,7 @@ a cache reconciled against git at session start.**
 | Skills | `skills/session-start`, `session-end`, `task-execution`, `git-workflow`, `add-task`, `bootstrap`, `parallel-tasks`, `stack-nestjs` | The behavior. Loaded on demand; invokable as `/sbrain:<name>`. |
 | Agent | `agents/code-reviewer.md` | Fresh-context, read-only reviewer. Runs before every non-WIP commit. |
 | Hooks | `hooks/hooks.json` + `hooks/scripts/` | Deterministic enforcement: blocks npm/yarn, commits on main/develop, force-push to shared branches, non-develop merges into main. Injects the boot reminder at SessionStart. Guards activate **only** in projects containing `.agent/`. |
+| UI mod | `hooks/mod/` + `tests/mod.test.ts` | Read-only ledger view inside Claude Code (v2.1.287+): a band above the prompt with the active task, branch, and status counts; a `/ledger` pane to browse tasks and start one; the active task id beside the spinner. Activates **only** in projects containing `.agent/tasks`. |
 | Scripts | `scripts/reindex.sh` | Regenerates `.agent/tasks/INDEX.md` from TASK files — index drift becomes structurally impossible. |
 | Templates | `templates/project/`, `templates/contracts/` | What `bootstrap` scaffolds into a new project (state files live in the project repo, behavior lives in this plugin). |
 
@@ -29,6 +30,10 @@ Verify inside the session:
 - `/hooks` — PreToolUse (Bash) and SessionStart entries from sbrain are listed
 - `/agents` — code-reviewer is listed
 - Type `/sbrain:` — the skills autocomplete
+- `/plugin` shows `1 mod active · sbrain`; in a sbrain project the band above the
+  prompt shows `◆ sbrain`, and `/ledger` opens the task pane
+- `claude plugin validate plugins/sbrain` and `claude plugin test plugins/sbrain`
+  check the mod without a session
 
 ## Install (marketplace)
 

@@ -3,6 +3,24 @@
 All notable changes to sbrain are documented here. Versions follow semver;
 the plugin version lives in `plugins/sbrain/.claude-plugin/plugin.json`.
 
+## [0.3.0] — 2026-10-04
+
+Claude Code UI mod. Additive — the bash hooks are unchanged, and Claude Code versions
+without mod support ignore it.
+
+- New hooks module `hooks/mod/register.ts` (wired via `modules` in `hooks/hooks.json`),
+  requires Claude Code v2.1.287+. Read-only: it never writes state files.
+  - Band above the prompt: active task (SESSION.md, else first `in_progress`),
+    branch + uncommitted change count, and status counts
+  - `/ledger` pane: open / all / closed filters, per-task detail (module, depends
+    on, branch, PR, commit, acceptance-criteria progress), `Başlat` fills
+    `/sbrain:task-execution TASK-NNN` into the prompt, `Reindex` runs
+    `scripts/reindex.sh`
+  - Active task id beside the spinner while Claude works
+- Ledger parser (`hooks/mod/ledger.ts`) follows reindex.sh's field rules and also
+  reads older task files written as `# TASK-NNN — Title` / `## Status: done`
+- Tests in `tests/mod.test.ts`, run with `claude plugin test plugins/sbrain`
+
 ## [0.2.0] — 2026-09-05
 
 Admin-dashboard stack + LDAP/MinIO/breakglass/RBAC concerns. Additive — no existing
