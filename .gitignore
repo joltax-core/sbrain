@@ -1,0 +1,4 @@
+.DS_Store
+# Written by Claude Code each time the mod loads from --plugin-dir
+plugins/*/.claude-plugin/types/
+plugins/*/tsconfig.json
