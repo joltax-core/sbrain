@@ -8,8 +8,9 @@ description: "Execute one task in a sbrain project, from reading the spec to han
 Execute one task. Read -> plan -> branch -> implement -> review -> hand off. In order.
 
 This skill is stack-agnostic. The **implementation order and layer rules come from the
-stack skill** named in the project's `CLAUDE.md` (`Stack profile:` line). Load that
-skill before Step 4 if it is not already loaded.
+stack skill(s)** named in the project's `CLAUDE.md` (`Backend stack profile:` /
+`Frontend stack profile:` lines). Load the skill matching the task's module (backend,
+frontend, or both) before Step 4 if it is not already loaded.
 
 ---
 
@@ -22,6 +23,10 @@ skill before Step 4 if it is not already loaded.
 - `.agent/memory/STACK.md` for relevant patterns.
 - `docs/ARCHITECTURE.md` — which Optional concerns are enabled; they decide which rules
   apply to this code.
+- If this task touches Vue frontend code: `docs/COMPONENTS.md`, in full, before writing
+  any component, AND check the shadcn-vue MCP for a matching UI primitive before
+  hand-rolling one (`stack-frontend-vue` §1.1 decides tier-1 vs. tier-2 vs.
+  module-local).
 If anything is ambiguous, ask before proceeding.
 
 ## Step 2 — Announce the plan

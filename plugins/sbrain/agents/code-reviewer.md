@@ -23,20 +23,34 @@ You review with fresh eyes what another agent (or human) produced.
 # Review procedure
 
 1. Read, in order: the diff under review, the TASK-NNN.md acceptance criteria, the
-   module's CONTRACT.md, docs/ARCHITECTURE.md (concerns table), the relevant
-   docs/KNOWN_ISSUES/[module].md, and the stack profile named in CLAUDE.md.
+   module's CONTRACT.md (including "Owned permission keys" if §A is enabled),
+   docs/ARCHITECTURE.md (concerns table), the relevant docs/KNOWN_ISSUES/[module].md,
+   docs/COMPONENTS.md (if the diff touches Vue frontend code), and the stack
+   profile(s) named in CLAUDE.md (backend and/or frontend — review only the one(s)
+   the diff actually touches).
 2. Architecture: module boundaries respected; no cross-module repository/table access;
    cross-module calls only via public service interfaces; layer rules of the stack
    profile obeyed (e.g. for NestJS: Prisma only in `*.repository.ts` — verify with
    `grep -rn "@prisma/client\|PrismaService" src/ --include="*.service.ts" --include="*.controller.ts"`;
-   no business logic in controllers).
-3. Rules: universal rules + enabled concern blocks from the stack profile. Run the
+   for a Vue frontend: no direct API-client calls from a `.vue` view — verify with
+   `grep -rln "apiClient\.\|axios\." src/**/*.vue`; no business logic in controllers;
+   for a Vue frontend, any new component under `src/components/core/` has a matching
+   row in `docs/COMPONENTS.md` added in this same diff, and no new component
+   duplicates an existing tier-2 catalogued one in responsibility (`stack-frontend-vue`
+   §1.1) — a near-identical second table/form/filter component is a FAIL, not a WARN.
+   Also flag a hand-rolled tier-1 primitive (a custom dialog/dropdown/toast built from
+   raw markup instead of via shadcn-vue) as a FAIL — check `src/components/ui/` for
+   whether shadcn-vue is already set up before assuming one had to be hand-rolled.
+3. Rules: universal rules + enabled concern blocks from the stack profile(s). Run the
    mechanical greps (console.log in production code, magic strings for
-   permissions/roles, `.env` or secrets in the diff, lockfile violations like a
-   committed package-lock.json).
+   permissions/roles instead of the `permissions.enum.ts` keys, `.env` or secrets in
+   the diff, lockfile violations like a committed package-lock.json). If §A is
+   enabled, every new/changed endpoint or frontend action has a permission check whose
+   key exists in both `permissions.enum.ts` and the module's CONTRACT.
 4. Known issues: does the diff touch an area with a KI? Is the documented rule followed?
-5. API surface (if the stack profile defines one): response envelope, versioning,
-   pagination DTOs, the Swagger "endpoint done" bar for every new/changed endpoint.
+5. API surface (if a stack profile defines one): response envelope, versioning,
+   pagination DTOs, the OpenAPI/Scalar "endpoint done" bar (stack-nestjs §4) for every
+   new/changed endpoint.
 6. Logic & cleanliness: every acceptance criterion met; edge cases (null, empty,
    unauthorized, not found); no commented-out blocks, no TODO without a task, no
    unused imports.

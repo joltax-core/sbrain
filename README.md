@@ -1,7 +1,8 @@
 # joltax — Claude Code plugin marketplace
 
-A single-source marketplace for the **sbrain** workflow plugin and its future
-stack profiles. Push here once; every machine and project updates from here.
+A single-source marketplace for the **sbrain** workflow plugin and its stack
+profiles (NestJS backend, Vue admin-dashboard frontend). Push here once; every
+machine and project updates from here.
 
 ## Install
 
