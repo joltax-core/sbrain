@@ -3,6 +3,22 @@
 All notable changes to sbrain are documented here. Versions follow semver;
 the plugin version lives in `plugins/sbrain/.claude-plugin/plugin.json`.
 
+## [0.4.0] — 2026-10-16
+
+Motion for the UI mod. Additive — same data, same controls, now animated.
+
+- New surface module `hooks/mod/motion.ts` (a `Client`), animated on the terminal /
+  desktop frame clock; redraws only when a frame actually changes, so idle costs nothing
+  - Logo: a glint sweeps across `◆ sbrain` every few seconds; while Claude works the
+    sweep speeds up and the diamond pulses `◆ ◈ ◇`
+  - `in_progress` icons spin `◐ ◓ ◑ ◒` (band, pane rows, detail); `blocked` blinks
+  - Acceptance bar in the pane eases in from empty, then a glint runs along the fill
+  - Burst in the band for 4.5s when a task flips to `done`: sparkles + typed-in
+    `✓ TASK-NNN tamamlandı`
+- Spinner suffix also shows the active task's acceptance progress (`· TASK-007 ▰▰▰▱▱`)
+- New option `motion`: `full` (default), `calm` (animate only while Claude works),
+  `off` (static, as in 0.3.0). VS Code and mobile always draw the static version
+
 ## [0.3.0] — 2026-10-04
 
 Claude Code UI mod. Additive — the bash hooks are unchanged, and Claude Code versions

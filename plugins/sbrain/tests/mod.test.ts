@@ -87,7 +87,8 @@ test('parseSession and filters', async () => {
 })
 
 // Answers every mods API call the mod makes, for a project at /work
-function stubProject(on, opts: { isSbrain: boolean; fills?: string[] }) {
+function stubProject(on, opts: { isSbrain: boolean; fills?: string[]; files?: Record<string, string> }) {
+  const files = opts.files ?? FILES
   mock.clock(on)
   on('session.cwd', () => ({ value: '/work/src' }))
   on('fs.exists', ($, e) => ({
@@ -95,12 +96,12 @@ function stubProject(on, opts: { isSbrain: boolean; fills?: string[] }) {
   }))
   on('fs.list', () => ({
     value: [
-      ...Object.keys(FILES).map((name) => ({ name, kind: 'file', size: 1, isLink: false })),
+      ...Object.keys(files).map((name) => ({ name, kind: 'file', size: 1, isLink: false })),
       { name: 'INDEX.md', kind: 'file', size: 1, isLink: false },
     ],
   }))
   on('fs.read', ($, e) => ({
-    value: e.path.endsWith('SESSION.md') ? SESSION : FILES[e.path.split('/').pop()] ?? '',
+    value: e.path.endsWith('SESSION.md') ? SESSION : files[e.path.split('/').pop()] ?? '',
   }))
   on('process.run', ($, e) => ({
     value: {
@@ -172,9 +173,69 @@ test('the pane filters tasks and starts the selected one', async ($, on) => {
     // Selecting a task shows its detail with acceptance progress
     // The selection survives across mounts, so select only when nothing is open
     if (!(await ui.find({ key: 'detail' }))) await ui.press({ key: 'task-TASK-007' })
-    expect(await ui.find({ type: 'Text', text: 'Kriter  ▰▰▰▰▰▱▱▱▱▱ 2/4' })).toBeDefined()
+    await ui.advance(800)
+    expect(await ui.find({ type: 'Text', text: '▰▰▰▰▰▱▱▱▱▱ 2/4', in: 'bar-TASK-007' })).toBeDefined()
     await ui.press({ key: 'start' })
     await ui.unmount()
   }
   expect(fills).toEqual(['/sbrain:task-execution TASK-007', '/sbrain:task-execution TASK-007'])
+})
+
+const text = (tree) => JSON.stringify(tree)
+
+test('the logo glints and the in-progress icon spins while Claude works', async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: true } })
+  const logos = new Set<string>()
+  const icons = new Set<string>()
+  for (let i = 0; i < 12; i++) {
+    logos.add(text(await ui.drawn({ in: 'band-logo' })))
+    icons.add(text(await ui.drawn({ in: 'band-icon' })))
+    await ui.advance(120)
+  }
+  expect(logos.size).toBeGreaterThan(3)
+  expect(icons.size).toBe(4)
+  expect(await ui.find({ type: 'Text', text: 'sbrain', in: 'band-logo' })).toBeDefined()
+})
+
+test('the acceptance bar eases in from empty', async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'task-TASK-007' })
+  expect(await ui.find({ type: 'Text', text: '▱▱▱▱▱▱▱▱▱▱ 2/4', in: 'bar-TASK-007' })).toBeDefined()
+  // Ease-out: most of the fill lands early, then it settles
+  await ui.advance(100)
+  expect(await ui.find({ type: 'Text', text: '▰▰▱▱▱▱▱▱▱▱ 2/4', in: 'bar-TASK-007' })).toBeDefined()
+  await ui.advance(600)
+  expect(await ui.find({ type: 'Text', text: '▰▰▰▰▰▱▱▱▱▱ 2/4', in: 'bar-TASK-007' })).toBeDefined()
+})
+
+test('a task that flips to done gets a burst in the band', async ($, on) => {
+  const files = { ...FILES }
+  stubProject(on, { isSbrain: true, files })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
+  files['TASK-007.md'] = TASK_7.replace('in_progress', 'done')
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await ui.press({ key: 'open-ledger' })
+  expect(await ui.find({ key: 'band-burst-TASK-007' })).toBeDefined()
+  await ui.advance(600)
+  expect(await ui.find({ type: 'Text', text: 'TASK-007 tamamlandı', in: 'band-burst-TASK-007' })).toBeDefined()
+})
+
+test('motion off and surfaces without Client draw the static band', async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'vscode', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
+  expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '◐' })).toBeDefined()
+})
+
+test('the motion option turns animation off', { options: { motion: 'off' } }, async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeDefined()
+  expect(await ui.find({ key: 'band-logo' })).toBeUndefined()
 })
