@@ -1,7 +1,9 @@
 // sbrain UI mod: shows the task ledger inside Claude Code.
 //   - A band above the prompt with the active task, branch, and ledger counts
 //   - A /ledger pane to browse tasks, see acceptance progress, and start one
-//   - The active task id beside the spinner while Claude works
+//   - The active task id and its acceptance progress beside the spinner while Claude works
+//   - Motion (motion.ts): a glinting logo, spinning in-progress icons, easing progress
+//     bars, and a short burst when a task flips to done. The `motion` option tunes it.
 // Git and the TASK-*.md files stay the source of truth; this only reads them.
 
 import {
@@ -18,9 +20,11 @@ import {
   type SessionState,
   type Task,
 } from './ledger.ts'
+import type { Motion, MotionProps } from './motion.ts'
 
 const PANE = 'sbrain-ledger'
 const REFRESH_MS = 20_000
+const CELEBRATE_MS = 4_500
 
 // Ledger snapshot, rebuilt by refresh()
 let root: string | null = null
@@ -32,6 +36,46 @@ let dirty = 0
 // Pane view state
 let filter: Filter = 'open'
 let selected: string | null = null
+
+// Motion: the option's value, each task's last seen status, and a task that just finished
+let motion: Motion = 'full'
+let lastStatus: Map<string, Task['status']> | null = null
+let celebrate: Task | null = null
+
+// The element table, and whether this surface runs Client modules (terminal and desktop do)
+function kitFor($, e) {
+  return { table: $.ui.resolve(e), move: motion !== 'off' && (e.surface === 'terminal' || e.surface === 'desktop') }
+}
+
+// An animated piece where the surface can move it, else the static fallback
+function animated(kit, key: string, props: MotionProps, fallback) {
+  if (!kit.move) return fallback
+  return kit.table.Client({ key, module: './motion.ts', props })
+}
+
+function statusIcon(kit, key: string, t: Task, busy = false) {
+  const fallback = kit.table.Text({ color: COLOR[t.status], children: [ICON[t.status]] })
+  if (t.status !== 'in_progress' && t.status !== 'blocked') return fallback
+  return animated(kit, key, { kind: 'icon', status: t.status, glyph: ICON[t.status], color: COLOR[t.status], busy, motion }, fallback)
+}
+
+function logo(kit, key: string, text: string, busy = false) {
+  return animated(kit, key, { kind: 'logo', text, busy, motion }, kit.table.Text({ bold: true, color: 'claude', children: ['◆ ' + text] }))
+}
+
+// Remember statuses; a task seen open last time and done now gets a celebration
+function noticeFinished($, next: Task[]) {
+  const finished = lastStatus
+    ? next.find((t) => t.status === 'done' && lastStatus!.has(t.id) && lastStatus!.get(t.id) !== 'done')
+    : undefined
+  lastStatus = new Map(next.map((t) => [t.id, t.status]))
+  if (!finished) return
+  celebrate = finished
+  $.clock.after(CELEBRATE_MS, () => {
+    if (celebrate?.id === finished.id) celebrate = null
+    $.ui.invalidate('ui.render')
+  })
+}
 
 // Nearest directory at or above the session's cwd that has .agent/tasks
 async function findRoot($) {
@@ -72,6 +116,7 @@ async function refresh($) {
     const task = parseTask(entry.name, String(await $.fs.read(dir + '/' + entry.name)))
     if (task) next.push(task)
   }
+  noticeFinished($, next)
   tasks = next
   const sessionFile = root + '/.agent/SESSION.md'
   session = (await $.fs.exists(sessionFile)) ? parseSession(String(await $.fs.read(sessionFile))) : null
@@ -100,7 +145,10 @@ function basename(path: string) {
   return path.replace(/\/+$/, '').split('/').pop() ?? path
 }
 
-export function register(on) {
+export function register(on, options) {
+  const opt = options?.motion
+  motion = opt === 'calm' || opt === 'off' ? opt : 'full'
+
   on('session.start', async ($, e, next) => {
     await refresh($)
     $.clock.every(REFRESH_MS, () => refresh($))
@@ -131,7 +179,9 @@ export function register(on) {
   // Band above the prompt: one line of ledger status
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (!root || e.props.hasSurvey) return next(e)
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const kit = kitFor($, e)
+    const { Box, Text, Button } = kit.table
+    const busy = Boolean(e.props.isWorking)
     const active = activeTask(tasks, session)
     const counts = countByStatus(tasks)
 
@@ -143,14 +193,21 @@ export function register(on) {
       flexDirection: 'row',
       columnGap: 2,
       children: [
-        Text({ bold: true, color: 'claude', children: ['◆ sbrain'] }),
-        active
+        logo(kit, 'band-logo', 'sbrain', busy),
+        celebrate
+          ? animated(
+              kit,
+              'band-burst-' + celebrate.id,
+              { kind: 'burst', text: '✓ ' + celebrate.id + ' tamamlandı', motion },
+              Text({ bold: true, color: 'success', children: ['✓ ' + celebrate.id + ' tamamlandı'] }),
+            )
+          : active
           ? Box({
               flexDirection: 'row',
               columnGap: 1,
               flexShrink: 1,
               children: [
-                Text({ color: COLOR[active.status], children: [ICON[active.status]] }),
+                statusIcon(kit, 'band-icon', active, busy),
                 Text({ bold: true, children: [active.id] }),
                 Text({ wrap: 'truncate-end', children: [active.title] }),
               ],
@@ -175,13 +232,15 @@ export function register(on) {
   on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
     const active = activeTask(tasks, session)
     if (!active) return next(e)
-    return next({ ...e, props: { ...e.props, suffix: ' · ' + active.id + (e.props.suffix ?? '') } })
+    const progress = active.criteriaTotal ? ' ' + progressBar(active.criteriaDone, active.criteriaTotal, 5) : ''
+    return next({ ...e, props: { ...e.props, suffix: ' · ' + active.id + progress + (e.props.suffix ?? '') } })
   })
 
   // The /ledger pane
   on('ui.render', { component: 'Pane' }, async ($, e, next) => {
     if (e.requestId !== PANE) return next(e)
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const kit = kitFor($, e)
+    const { Box, Text, Button } = kit.table
     const redraw = () => $.ui.invalidate('ui.render')
 
     if (!root) {
@@ -217,7 +276,7 @@ export function register(on) {
       flexDirection: 'row',
       columnGap: 2,
       children: [
-        Text({ bold: true, color: 'claude', children: ['◆ ' + basename(root)] }),
+        logo(kit, 'pane-logo', basename(root)),
         Text({ dimColor: true, children: ['⎇ ' + (branch || '?') + (dirty ? '  ●' + dirty + ' değişiklik' : '')] }),
       ],
     })
@@ -251,7 +310,7 @@ export function register(on) {
                   redraw()
                 },
               }),
-              Text({ color: COLOR[t.status], children: [ICON[t.status]] }),
+              statusIcon(kit, 'icon-' + t.id, t),
               Text({ bold: selected === t.id, wrap: 'truncate-end', children: [t.title] }),
               ...(t.module ? [Text({ dimColor: true, children: ['· ' + t.module] })] : []),
             ],
@@ -269,7 +328,14 @@ export function register(on) {
             paddingX: 1,
             children: [
               Text({ bold: true, children: [current.id + ': ' + current.title] }),
-              Text({ color: COLOR[current.status], children: [ICON[current.status] + ' ' + LABEL[current.status]] }),
+              Box({
+                flexDirection: 'row',
+                columnGap: 1,
+                children: [
+                  statusIcon(kit, 'detail-icon-' + current.id, current),
+                  Text({ color: COLOR[current.status], children: [LABEL[current.status]] }),
+                ],
+              }),
               ...[
                 ['Modül', current.module],
                 ['Bağımlı', current.dependsOn],
@@ -281,14 +347,25 @@ export function register(on) {
                 .map(([k, v]) => Text({ children: [k.padEnd(8) + v] })),
               ...(current.criteriaTotal
                 ? [
-                    Text({
+                    Box({
+                      key: 'criteria',
+                      flexDirection: 'row',
                       children: [
-                        'Kriter  ' +
-                          progressBar(current.criteriaDone, current.criteriaTotal) +
-                          ' ' +
-                          current.criteriaDone +
-                          '/' +
-                          current.criteriaTotal,
+                        Text({ children: ['Kriter  '] }),
+                        animated(
+                          kit,
+                          'bar-' + current.id,
+                          { kind: 'bar', done: current.criteriaDone, total: current.criteriaTotal, width: 10, motion },
+                          Text({
+                            children: [
+                              progressBar(current.criteriaDone, current.criteriaTotal) +
+                                ' ' +
+                                current.criteriaDone +
+                                '/' +
+                                current.criteriaTotal,
+                            ],
+                          }),
+                        ),
                       ],
                     }),
                   ]
