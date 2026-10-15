@@ -22,12 +22,7 @@
     "motion": {
       "type": "string",
       "title": "Animasyon",
-      "description": "Ledger arayüzündeki hareket: full (her zaman), calm (yalnızca Claude çalışırken), off (statik)",
-      "options": [
-        "full",
-        "calm",
-        "off"
-      ],
+      "description": "Ledger arayüzündeki hareket: full (her zaman), calm (yalnızca Claude çalışırken), off (statik). Başka bir değer full sayılır.",
       "default": "full"
     }
   }
