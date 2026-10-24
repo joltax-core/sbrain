@@ -3,6 +3,18 @@
 All notable changes to sbrain are documented here. Versions follow semver;
 the plugin version lives in `plugins/sbrain/.claude-plugin/plugin.json`.
 
+## [0.5.0] — 2026-10-24
+
+Azra, a pixel mascot for the UI mod. Additive — the ledger band is unchanged beside her.
+
+- New file `hooks/mod/azra.ts`: a blonde, blue-eyed pixel girl in an orange sweater with
+  a white "A", drawn beside the band above the prompt (SVG on desktop, half-block
+  `Raster` on the terminal). She shows in every project, also where there is no ledger
+- Every 8–20 minutes a speech bubble for 30 seconds: funny, jealous or loving lines;
+  sometimes a comment after a turn, and a go-to-bed nudge between 01:00 and 05:00
+- 💬 beside her makes her talk right away
+- New option `maskot`: `on` (default) or `off`
+
 ## [0.4.0] — 2026-10-16
 
 Motion for the UI mod. Additive — same data, same controls, now animated.

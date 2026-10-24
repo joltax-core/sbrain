@@ -4,6 +4,8 @@
 //   - The active task id and its acceptance progress beside the spinner while Claude works
 //   - Motion (motion.ts): a glinting logo, spinning in-progress icons, easing progress
 //     bars, and a short burst when a task flips to done. The `motion` option tunes it.
+//   - Azra (azra.ts): a pixel mascot beside the band with a speech bubble now and then.
+//     The `maskot` option turns her off.
 // Git and the TASK-*.md files stay the source of truth; this only reads them.
 
 import {
@@ -21,6 +23,7 @@ import {
   type Task,
 } from './ledger.ts'
 import type { Motion, MotionProps } from './motion.ts'
+import { azraAfterTurn, azraBubble, azraFigure, azraStart } from './azra.ts'
 
 const PANE = 'sbrain-ledger'
 const REFRESH_MS = 20_000
@@ -41,6 +44,9 @@ let selected: string | null = null
 let motion: Motion = 'full'
 let lastStatus: Map<string, Task['status']> | null = null
 let celebrate: Task | null = null
+
+// Azra the mascot: on unless the `maskot` option says off
+let azra = true
 
 // The element table, and whether this surface runs Client modules (terminal and desktop do)
 function kitFor($, e) {
@@ -148,10 +154,12 @@ function basename(path: string) {
 export function register(on, options) {
   const opt = options?.motion
   motion = opt === 'calm' || opt === 'off' ? opt : 'full'
+  azra = options?.maskot !== 'off'
 
   on('session.start', async ($, e, next) => {
     await refresh($)
     $.clock.every(REFRESH_MS, () => refresh($))
+    if (azra) azraStart($)
     try {
       await $.command.register({
         name: 'ledger',
@@ -167,6 +175,7 @@ export function register(on, options) {
   // Claude may have edited TASK files or switched branches during the turn
   on('turn.complete', async ($, e, next) => {
     await refresh($)
+    if (azra) azraAfterTurn($)
     return next(e)
   })
 
@@ -176,11 +185,16 @@ export function register(on, options) {
     return {}
   })
 
-  // Band above the prompt: one line of ledger status
+  // Band above the prompt: one line of ledger status, with Azra beside it
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (!root || e.props.hasSurvey) return next(e)
+    if (e.props.hasSurvey || (!root && !azra)) return next(e)
     const kit = kitFor($, e)
     const { Box, Text, Button } = kit.table
+    const figure = azra ? azraFigure(kit.table, e.surface) : null
+    if (!root && !figure) return next(e)
+    if (!root) {
+      return Box({ flexDirection: 'row', columnGap: 1, alignItems: 'flex-end', children: [figure, azraBubble($, kit.table)] })
+    }
     const busy = Boolean(e.props.isWorking)
     const active = activeTask(tasks, session)
     const counts = countByStatus(tasks)
@@ -189,7 +203,7 @@ export function register(on, options) {
       .filter((s) => counts[s] > 0 || s === 'done')
       .map((s) => Text({ color: COLOR[s], children: [ICON[s] + counts[s]] }))
 
-    return Box({
+    const ledgerLine = Box({
       flexDirection: 'row',
       columnGap: 2,
       children: [
@@ -224,6 +238,17 @@ export function register(on, options) {
             await $.ui.open({ id: PANE, title: 'sbrain', focus: true, closeOnEscape: true })
           },
         }),
+      ],
+    })
+
+    if (!figure) return ledgerLine
+    return Box({
+      flexDirection: 'row',
+      columnGap: 1,
+      alignItems: 'flex-end',
+      children: [
+        figure,
+        Box({ flexDirection: 'column', flexShrink: 1, children: [ledgerLine, azraBubble($, kit.table)] }),
       ],
     })
   })
