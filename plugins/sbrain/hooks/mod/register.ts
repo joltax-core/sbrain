@@ -1,11 +1,11 @@
 // sbrain UI mod: shows the task ledger inside Claude Code.
-//   - A band above the prompt with the active task, branch, and ledger counts
+//   - A compact, still band above the prompt: the active task and the ledger counts
 //   - A /ledger pane to browse tasks, see acceptance progress, and start one
 //   - The active task id and its acceptance progress beside the spinner while Claude works
-//   - Motion (motion.ts): a glinting logo, spinning in-progress icons, easing progress
-//     bars, and a short burst when a task flips to done. The `motion` option tunes it.
-//   - Azra (azra.ts): a pixel mascot beside the band with a speech bubble now and then.
-//     The `maskot` option turns her off.
+//   - Motion (motion.ts), in the /ledger pane only: a glinting logo, spinning in-progress
+//     icons, and easing progress bars. The `motion` option tunes it.
+//   - Azra (azra.ts): a pixel mascot beside the band with a speech bubble now and then;
+//     her ❓ reports the active task and the counts. The `maskot` option turns her off.
 // Git and the TASK-*.md files stay the source of truth; this only reads them.
 
 import {
@@ -18,16 +18,18 @@ import {
   parseSession,
   parseTask,
   progressBar,
+  shorten,
   type Filter,
   type SessionState,
   type Task,
 } from './ledger.ts'
 import type { Motion, MotionProps } from './motion.ts'
-import { azraAfterTurn, azraBubble, azraFigure, azraStart } from './azra.ts'
+import { azraAfterTurn, azraBubble, azraFigure, azraStart, azraStatus } from './azra.ts'
 
 const PANE = 'sbrain-ledger'
 const REFRESH_MS = 20_000
 const CELEBRATE_MS = 4_500
+const TITLE_MAX = 36
 
 // Ledger snapshot, rebuilt by refresh()
 let root: string | null = null
@@ -185,54 +187,54 @@ export function register(on, options) {
     return {}
   })
 
-  // Band above the prompt: one line of ledger status, with Azra beside it
+  // Band above the prompt: one compact, still line of ledger status, with Azra beside it.
+  // No motion here: the band sits in view all day, so it stays calm.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || (!root && !azra)) return next(e)
-    const kit = kitFor($, e)
-    const { Box, Text, Button } = kit.table
-    const figure = azra ? azraFigure(kit.table, e.surface) : null
+    const table = $.ui.resolve(e)
+    const { Box, Text, Button } = table
+    const figure = azra ? azraFigure(table, e.surface) : null
     if (!root && !figure) return next(e)
-    if (!root) {
-      return Box({ flexDirection: 'row', columnGap: 1, alignItems: 'flex-end', children: [figure, azraBubble($, kit.table)] })
-    }
-    const busy = Boolean(e.props.isWorking)
     const active = activeTask(tasks, session)
+    const ask = () => azraStatus(active, root ? countByStatus(tasks) : null)
+    if (!root) {
+      return Box({ flexDirection: 'row', columnGap: 1, alignItems: 'flex-end', children: [figure, azraBubble($, table, ask)] })
+    }
     const counts = countByStatus(tasks)
+    const sep = () => Text({ dimColor: true, children: ['│'] })
 
     const countParts = (['in_progress', 'blocked', 'pending', 'done'] as const)
       .filter((s) => counts[s] > 0 || s === 'done')
       .map((s) => Text({ color: COLOR[s], children: [ICON[s] + counts[s]] }))
 
+    const current = celebrate
+      ? Text({ bold: true, color: 'success', children: ['✓ ' + celebrate.id + ' tamamlandı'] })
+      : active
+      ? Box({
+          flexDirection: 'row',
+          columnGap: 1,
+          flexShrink: 1,
+          children: [
+            Text({ color: COLOR[active.status], children: [ICON[active.status]] }),
+            Text({ bold: true, children: [active.id] }),
+            Text({ dimColor: true, wrap: 'truncate-end', children: [shorten(active.title, TITLE_MAX)] }),
+          ],
+        })
+      : Text({ dimColor: true, children: ['aktif görev yok'] })
+
     const ledgerLine = Box({
       flexDirection: 'row',
-      columnGap: 2,
+      columnGap: 1,
       children: [
-        logo(kit, 'band-logo', 'sbrain', busy),
-        celebrate
-          ? animated(
-              kit,
-              'band-burst-' + celebrate.id,
-              { kind: 'burst', text: '✓ ' + celebrate.id + ' tamamlandı', motion },
-              Text({ bold: true, color: 'success', children: ['✓ ' + celebrate.id + ' tamamlandı'] }),
-            )
-          : active
-          ? Box({
-              flexDirection: 'row',
-              columnGap: 1,
-              flexShrink: 1,
-              children: [
-                statusIcon(kit, 'band-icon', active, busy),
-                Text({ bold: true, children: [active.id] }),
-                Text({ wrap: 'truncate-end', children: [active.title] }),
-              ],
-            })
-          : Text({ dimColor: true, children: ['aktif görev yok'] }),
-        Text({ dimColor: true, wrap: 'truncate-middle', children: ['⎇ ' + (branch || '?') + (dirty ? ' ●' + dirty : '')] }),
-        Box({ flexDirection: 'row', columnGap: 1, children: countParts }),
+        Text({ bold: true, color: 'claude', children: ['◆'] }),
+        current,
+        sep(),
+        Box({ flexDirection: 'row', columnGap: 1, flexShrink: 0, children: countParts }),
         Button({
           key: 'open-ledger',
-          label: 'Görevler',
+          label: '☰',
           plain: true,
+          dimColor: true,
           onPress: async () => {
             await refresh($)
             await $.ui.open({ id: PANE, title: 'sbrain', focus: true, closeOnEscape: true })
@@ -248,7 +250,7 @@ export function register(on, options) {
       alignItems: 'flex-end',
       children: [
         figure,
-        Box({ flexDirection: 'column', flexShrink: 1, children: [ledgerLine, azraBubble($, kit.table)] }),
+        Box({ flexDirection: 'column', flexShrink: 1, children: [ledgerLine, azraBubble($, table, ask)] }),
       ],
     })
   })

@@ -4,7 +4,6 @@
 //   logo   - "◆ sbrain" with a glint sweeping across it (fast while Claude works)
 //   icon   - a task's status glyph: in_progress spins, blocked blinks
 //   bar    - acceptance progress that eases to its value, with a passing glint
-//   burst  - a short celebration when a task flips to done
 
 import type { ClientModule, ClientSurface, RenderElement } from 'claude-code'
 
@@ -14,7 +13,6 @@ export type MotionProps =
   | { kind: 'logo'; text: string; busy: boolean; motion: Motion }
   | { kind: 'icon'; status: string; glyph: string; color: string; busy: boolean; motion: Motion }
   | { kind: 'bar'; done: number; total: number; width: number; motion: Motion }
-  | { kind: 'burst'; text: string; motion: Motion }
 
 // Mutable per-instance clock; the timer and the drawing share this object
 type Live = {
@@ -35,16 +33,8 @@ const CORE = '#ffe4d4'
 
 const SPIN = ['◐', '◓', '◑', '◒']
 const DIAMOND = ['◆', '◈', '◇', '◈']
-const SPARKS = ['✦', '✧', '⋆', '·', ' ']
-const SPARK_COLORS = ['claude', 'success', 'warning', 'suggestion', GLINT]
 
 const easeOut = (x: number) => 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3)
-
-// Deterministic per-cell noise so sparkles twinkle without Math.random
-const hash = (n: number) => {
-  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
-  return x - Math.floor(x)
-}
 
 // ---- logo -------------------------------------------------------------------
 
@@ -145,50 +135,18 @@ function drawBar(live: Live, s: ClientSurface<Live>): RenderElement {
   return Text({ children: cells })
 }
 
-// ---- completion burst --------------------------------------------------------------
-
-const BURST_SPARKS = 3
-
-function burstKey(live: Live): string {
-  const p = live.props as Extract<MotionProps, { kind: 'burst' }>
-  if (p.motion === 'off') return 'still'
-  return String(Math.floor(live.t / 110))
-}
-
-function drawBurst(live: Live, s: ClientSurface<Live>): RenderElement {
-  const { Text } = s.elements
-  const p = live.props as Extract<MotionProps, { kind: 'burst' }>
-  const still = p.motion === 'off'
-  const step = still ? 1000 : Math.floor(live.t / 110)
-  // The message types itself in over the first half second
-  const shown = still ? p.text : [...p.text].slice(0, Math.ceil((live.t / 500) * p.text.length)).join('')
-  const sparks = (side: number) =>
-    Array.from({ length: BURST_SPARKS }, (_, i) => {
-      const n = hash(side * 31 + i * 7 + step)
-      const glyph = still ? '✦' : SPARKS[Math.floor(n * SPARKS.length)]!
-      const color = SPARK_COLORS[Math.floor(hash(n * 13 + i) * SPARK_COLORS.length)]!
-      return Text({ color, children: [glyph] })
-    })
-  return Text({
-    bold: true,
-    children: [...sparks(1), Text({ color: 'success', children: [' ' + shown.padEnd([...p.text].length) + ' '] }), ...sparks(2)],
-  })
-}
-
 // ---- the component --------------------------------------------------------------
 
 const FRAME_KEY: Record<MotionProps['kind'], (live: Live) => string> = {
   logo: logoKey,
   icon: (live) => String(iconFrame(live)),
   bar: barKey,
-  burst: burstKey,
 }
 
 const DRAW: Record<MotionProps['kind'], (live: Live, s: ClientSurface<Live>) => RenderElement> = {
   logo: drawLogo,
   icon: drawIcon,
   bar: drawBar,
-  burst: drawBurst,
 }
 
 const SbrainMotion: ClientModule<MotionProps, Live> = (props, surface) => {

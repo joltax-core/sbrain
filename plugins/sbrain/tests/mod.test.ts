@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import { field, filterTasks, parseSession, parseTask, progressBar } from '../hooks/mod/ledger.ts'
+import { field, filterTasks, parseSession, parseTask, progressBar, shorten } from '../hooks/mod/ledger.ts'
 
 const TASK_7 = `# TASK-007: Kullanıcı girişi (LDAP)
 
@@ -86,6 +86,13 @@ test('parseSession and filters', async () => {
   expect(progressBar(2, 4, 4)).toBe('▰▰▱▱')
 })
 
+test('shorten cuts long titles on a word boundary', async () => {
+  expect(shorten('Kısa başlık', 36)).toBe('Kısa başlık')
+  expect(shorten('Insider — restricted management area (budget, revenue, KPIs)', 36)).toBe(
+    'Insider — restricted management…',
+  )
+})
+
 // Answers every mods API call the mod makes, for a project at /work
 function stubProject(on, opts: { isSbrain: boolean; fills?: string[]; files?: Record<string, string> }) {
   const files = opts.files ?? FILES
@@ -122,6 +129,8 @@ function stubProject(on, opts: { isSbrain: boolean; fills?: string[]; files?: Re
   return clock
 }
 
+const text = (tree) => JSON.stringify(tree)
+
 const BAND = {
   plugin: 'sbrain',
   component: 'AbovePrompt',
@@ -137,17 +146,38 @@ const PANE = {
   props: { title: 'sbrain', isFocused: true, bodyColumns: 80, placement: 'inline', scroll: { offset: 0, bodyRows: 20 }, view: {} },
 } as const
 
-test('the band shows the active task, branch, and counts', async ($, on) => {
+test('the band shows the active task and counts, compactly', async ($, on) => {
   stubProject(on, { isSbrain: true })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
     expect(await ui.find({ type: 'Text', text: 'TASK-007' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: 'Kullanıcı girişi (LDAP)' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: '⎇ feat/task-007-ldap-login ●2' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: '✓1' })).toBeDefined()
+    // The branch lives in the pane, not the band
+    expect(await ui.find({ type: 'Text', text: /⎇/ })).toBeUndefined()
     await ui.unmount()
   }
+})
+
+test('❓ makes Azra report the active task and the counts', async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.press({ key: 'azra-ask' })
+  const said = text(await ui.drawn())
+  expect(said).toContain('TASK-007 üzerindeyiz')
+  expect(said).toContain('2 açık görev var (1 devam ediyor, 1 bekliyor)')
+  expect(said).toContain('1 görev bitti')
+  expect(await ui.find({ key: 'azra-ask' })).toBeUndefined()
+})
+
+test('❓ outside a sbrain project says there is no ledger', async ($, on) => {
+  stubProject(on, { isSbrain: false })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await ui.press({ key: 'azra-ask' })
+  expect(text(await ui.drawn())).toContain('sbrain projesi değil')
 })
 
 test('the band stays out of non-sbrain projects with maskot off', { options: { maskot: 'off' } }, async ($, on) => {
@@ -155,7 +185,7 @@ test('the band stays out of non-sbrain projects with maskot off', { options: { m
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'drawn by Claude Code' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeUndefined()
+  expect(await ui.find({ key: 'open-ledger' })).toBeUndefined()
 })
 
 test('in non-sbrain projects only Azra shows, no ledger', async ($, on) => {
@@ -212,22 +242,12 @@ test('the pane filters tasks and starts the selected one', async ($, on) => {
   expect(fills).toEqual(['/sbrain:task-execution TASK-007', '/sbrain:task-execution TASK-007'])
 })
 
-const text = (tree) => JSON.stringify(tree)
-
-test('the logo glints and the in-progress icon spins while Claude works', async ($, on) => {
+test('the band stays still while Claude works', async ($, on) => {
   stubProject(on, { isSbrain: true })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: true } })
-  const logos = new Set<string>()
-  const icons = new Set<string>()
-  for (let i = 0; i < 12; i++) {
-    logos.add(text(await ui.drawn({ in: 'band-logo' })))
-    icons.add(text(await ui.drawn({ in: 'band-icon' })))
-    await ui.advance(120)
-  }
-  expect(logos.size).toBeGreaterThan(3)
-  expect(icons.size).toBe(4)
-  expect(await ui.find({ type: 'Text', text: 'sbrain', in: 'band-logo' })).toBeDefined()
+  expect(await ui.find({ type: 'Client' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '◐' })).toBeDefined()
 })
 
 test('the acceptance bar eases in from empty', async ($, on) => {
@@ -243,30 +263,28 @@ test('the acceptance bar eases in from empty', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: '▰▰▰▰▰▱▱▱▱▱ 2/4', in: 'bar-TASK-007' })).toBeDefined()
 })
 
-test('a task that flips to done gets a burst in the band', async ($, on) => {
+test('a task that flips to done is announced in the band', async ($, on) => {
   const files = { ...FILES }
   stubProject(on, { isSbrain: true, files })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
   files['TASK-007.md'] = TASK_7.replace('in_progress', 'done')
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   await ui.press({ key: 'open-ledger' })
-  expect(await ui.find({ key: 'band-burst-TASK-007' })).toBeDefined()
-  await ui.advance(600)
-  expect(await ui.find({ type: 'Text', text: 'TASK-007 tamamlandı', in: 'band-burst-TASK-007' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '✓ TASK-007 tamamlandı' })).toBeDefined()
 })
 
 test('motion off and surfaces without Client draw the static band', async ($, on) => {
   stubProject(on, { isSbrain: true })
   await $.session.start({ surface: 'vscode', isInteractive: true, cwd: '/work/src' })
   const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
-  expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'TASK-007' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '◐' })).toBeDefined()
 })
 
 test('the motion option turns animation off', { options: { motion: 'off' } }, async ($, on) => {
   stubProject(on, { isSbrain: true })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
-  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeDefined()
-  expect(await ui.find({ key: 'band-logo' })).toBeUndefined()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: '◆ work' })).toBeDefined()
+  expect(await ui.find({ key: 'pane-logo' })).toBeUndefined()
 })
