@@ -3,6 +3,13 @@
 All notable changes to sbrain are documented here. Versions follow semver;
 the plugin version lives in `plugins/sbrain/.claude-plugin/plugin.json`.
 
+## [0.5.1] — 2026-10-24
+
+- Azra walks: every 25–70 seconds she takes a few small steps left or right on a stage
+  a little wider than she is, legs swapping each step, so nothing beside her moves
+- Her drawing has no background of its own: empty pixels are left out on desktop and
+  drawn in the terminal's own colors
+
 ## [0.5.0] — 2026-10-24
 
 Azra, a pixel mascot for the UI mod. Additive — the ledger band is unchanged beside her.

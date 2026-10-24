@@ -89,7 +89,7 @@ test('parseSession and filters', async () => {
 // Answers every mods API call the mod makes, for a project at /work
 function stubProject(on, opts: { isSbrain: boolean; fills?: string[]; files?: Record<string, string> }) {
   const files = opts.files ?? FILES
-  mock.clock(on)
+  const clock = mock.clock(on)
   on('session.cwd', () => ({ value: '/work/src' }))
   on('fs.exists', ($, e) => ({
     value: opts.isSbrain && (e.path === '/work/.agent/tasks' || e.path === '/work/.agent/SESSION.md'),
@@ -119,6 +119,7 @@ function stubProject(on, opts: { isSbrain: boolean; fills?: string[]; files?: Re
   })
   on('session.start', () => ({ cwd: '/work/src' }))
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  return clock
 }
 
 const BAND = {
@@ -172,6 +173,19 @@ test('Azra sits beside the ledger line in sbrain projects', async ($, on) => {
   expect(await ui.find({ type: 'Raster', key: 'azra' })).toBeDefined()
   expect(await ui.find({ key: 'open-ledger' })).toBeDefined()
   expect(await ui.find({ key: 'azra-talk' })).toBeDefined()
+})
+
+test('Azra walks a few steps now and then, then stands still', async ($, on) => {
+  const clock = stubProject(on, { isSbrain: false })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  const before = (await ui.find({ type: 'Svg' }))!.props.source
+  await clock.advance(70_000 + 15 * 220)
+  const after = (await ui.find({ type: 'Svg' }))!.props.source
+  expect(after).not.toBe(before)
+  // Standing again: the next rest leaves the drawing as it is
+  await clock.advance(5_000)
+  expect((await ui.find({ type: 'Svg' }))!.props.source).toBe(after)
 })
 
 test('the pane filters tasks and starts the selected one', async ($, on) => {
