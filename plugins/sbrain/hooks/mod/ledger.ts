@@ -141,6 +141,15 @@ export function filterTasks(tasks: readonly Task[], filter: Filter): Task[] {
   return picked.sort((a, b) => order(a) - order(b))
 }
 
+// Cut to `max` characters on a word boundary, with an ellipsis when anything was dropped
+export function shorten(text: string, max: number): string {
+  const chars = [...text]
+  if (chars.length <= max) return text
+  const cut = chars.slice(0, max - 1).join('')
+  const space = cut.lastIndexOf(' ')
+  return (space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:—–-]+$/, '') + '…'
+}
+
 export function progressBar(done: number, total: number, width = 10): string {
   if (total === 0) return ''
   const filled = Math.round((done / total) * width)

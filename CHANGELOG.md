@@ -3,6 +3,19 @@
 All notable changes to sbrain are documented here. Versions follow semver;
 the plugin version lives in `plugins/sbrain/.claude-plugin/plugin.json`.
 
+## [0.6.0] — 2026-10-24
+
+A calmer, more compact band, and Azra can tell you where you stand.
+
+- The band is one short, still line: `◆`, the active task's icon, id and title (cut to
+  36 characters on a word boundary), then the status counts and a `☰` that opens the
+  ledger. The branch moved out of the band (it is still in the `/ledger` pane)
+- No motion in the band anymore: no glinting logo, no spinning task icon, and a task
+  that finishes is announced with a plain `✓ TASK-NNN tamamlandı`. The pane keeps its
+  motion, still tuned by the `motion` option; the unused burst animation is gone
+- ❓ beside Azra's 💬: she says which task is active and how many tasks are open
+  (in progress, pending, blocked), done and deferred
+
 ## [0.5.1] — 2026-10-24
 
 - Azra walks: every 25–70 seconds she takes a few small steps left or right on a stage

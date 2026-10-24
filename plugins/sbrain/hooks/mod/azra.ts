@@ -3,7 +3,11 @@
 //   - Every 8–20 minutes a speech bubble (funny, jealous or loving) for 30 seconds
 //   - After a turn she sometimes comments; between 01:00 and 05:00 she says go to bed
 //   - Every 25–70 seconds she walks a few small steps left or right on a little stage
-//   - 💬 beside her makes her talk right away. The `maskot` option turns her off.
+//   - 💬 beside her makes her talk right away; ❓ makes her report the ledger
+//     (the active task and how many tasks are open, pending and done).
+//   - The `maskot` option turns her off.
+
+import type { Status, Task } from './ledger.ts'
 
 const SPRITE = [
   '....hhhhhhhh....',
@@ -237,10 +241,30 @@ export function azraFigure(table, surface: string) {
   return null
 }
 
-// The bubble while she speaks, else the 💬 button
-export function azraBubble($, table) {
+// What ❓ makes her say: the active task and the ledger counts, or that this is no sbrain project
+export function azraStatus(active: Task | null, counts: Record<Status, number> | null): string {
+  if (!counts) return 'Müco burası bir sbrain projesi değil, görev defteri yok 🤷‍♀️'
+  const open = counts.in_progress + counts.blocked + counts.pending
+  const where = active ? 'Şu an ' + active.id + ' üzerindeyiz Müco: ' + active.title + '.' : 'Şu an aktif bir görevimiz yok Müco.'
+  const parts = [counts.in_progress + ' devam ediyor', counts.pending + ' bekliyor']
+  if (counts.blocked) parts.push(counts.blocked + ' bloklu')
+  const tail = counts.deferred ? ', ' + counts.deferred + ' ertelendi' : ''
+  return where + ' ' + open + ' açık görev var (' + parts.join(', ') + '); ' + counts.done + ' görev bitti' + tail + ' ✨'
+}
+
+// The bubble while she speaks, else the 💬 and ❓ buttons
+export function azraBubble($, table, status: () => string) {
   const { Box, Text, Button } = table
-  if (!bubble) return Button({ key: 'azra-talk', label: '💬', plain: true, onPress: () => azraTalk($) })
+  if (!bubble) {
+    return Box({
+      flexDirection: 'row',
+      columnGap: 1,
+      children: [
+        Button({ key: 'azra-talk', label: '💬', plain: true, onPress: () => azraTalk($) }),
+        Button({ key: 'azra-ask', label: '❓', plain: true, onPress: () => azraSay($, status()) }),
+      ],
+    })
+  }
   return Box({
     borderStyle: 'round',
     borderColor: '#2f80ed',
