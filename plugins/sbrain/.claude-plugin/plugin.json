@@ -1,6 +1,6 @@
 {
   "name": "sbrain",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Git-authoritative development kernel: session protocols, task ledger, memory, enforcement hooks, fresh-context code review, and stack profiles (NestJS backend, Vue admin-dashboard frontend on Tailwind + shadcn-vue via MCP, with LDAP/breakglass auth, MinIO storage, and RBAC concern rules). Git is the source of truth; every state file is a cache reconciled against it.",
   "author": {
     "name": "Joltax"
@@ -24,6 +24,12 @@
       "title": "Animasyon",
       "description": "Ledger arayüzündeki hareket: full (her zaman), calm (yalnızca Claude çalışırken), off (statik). Başka bir değer full sayılır.",
       "default": "full"
+    },
+    "maskot": {
+      "type": "string",
+      "title": "Maskot",
+      "description": "Azra, görev şeridinin yanındaki piksel maskot: on (açık) veya off (kapalı). Başka bir değer on sayılır.",
+      "default": "on"
     }
   }
 }

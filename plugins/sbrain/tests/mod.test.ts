@@ -149,12 +149,29 @@ test('the band shows the active task, branch, and counts', async ($, on) => {
   }
 })
 
-test('the band stays out of non-sbrain projects', async ($, on) => {
+test('the band stays out of non-sbrain projects with maskot off', { options: { maskot: 'off' } }, async ($, on) => {
   stubProject(on, { isSbrain: false })
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: 'drawn by Claude Code' })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: '◆ sbrain' })).toBeUndefined()
+})
+
+test('in non-sbrain projects only Azra shows, no ledger', async ($, on) => {
+  stubProject(on, { isSbrain: false })
+  await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Svg' })).toBeDefined()
+  expect(await ui.find({ key: 'open-ledger' })).toBeUndefined()
+})
+
+test('Azra sits beside the ledger line in sbrain projects', async ($, on) => {
+  stubProject(on, { isSbrain: true })
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work/src' })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Raster', key: 'azra' })).toBeDefined()
+  expect(await ui.find({ key: 'open-ledger' })).toBeDefined()
+  expect(await ui.find({ key: 'azra-talk' })).toBeDefined()
 })
 
 test('the pane filters tasks and starts the selected one', async ($, on) => {
